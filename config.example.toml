@@ -1,0 +1,7 @@
+###
+### Server configuration
+### (rename this file to "config.toml"!)
+
+listenport      = 5050
+secret          = "123"
+uploadRootDir   = "./uploads/"
