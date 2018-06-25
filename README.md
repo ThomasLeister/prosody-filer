@@ -8,10 +8,6 @@ A simple file server for handling XMPP http_upload requests. This server is meat
 * This server works without any script interpreters or additional dependencies. It is delivered as a binary.
 * Go is very good at serving HTTP requests.
 
-**Why shoud I NOT use this server?**
-
-* This software is still work in progress
-
 
 ## Download 
 
@@ -43,17 +39,20 @@ The application can now be build:
 
 ## Set up / configuration
 
-[TBD]
 
-### Setup Prosody Filter environment
+### Setup Prosody Filer environment
 
 Create a new user for Prosody Filer to run as: 
 
     adduser --disabled-login --disabled-password prosody-filer
 
+Switch to the new user:
+
+    su - prosody-filer
+
 Copy  
 
-* the binary ```prosody-fiter``` and 
+* the binary ```prosody-filer``` and 
 * config ```config.example.toml``` 
 
 to ```/home/prosody-filer/```. Rename the configuration to ```config.toml```.
@@ -61,7 +60,7 @@ to ```/home/prosody-filer/```. Rename the configuration to ```config.toml```.
 
 ### Configure Prosody
 
-Make sure mod_http_upload is **dis**abled and mod_http_upload_external is **en**abled! Then configure the external upload module:
+Back in your root shell make sure ```mod_http_upload``` is **dis**abled and ```mod_http_upload_external``` is **en**abled! Then configure the external upload module:
 
 ```
 http_upload_external_base_url = "https://uploads.myserver.tld/upload/"
