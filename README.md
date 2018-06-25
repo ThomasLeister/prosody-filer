@@ -145,7 +145,7 @@ Create a new config file ```/etc/nginx/sites-available/uploads.myserver.tld```:
 
 Enable the new config:  
 
-    ln -s /etc/ngin/sites-available/uploads.myserver.tld /etc/nginx/sites-enabled/
+    ln -s /etc/nginx/sites-available/uploads.myserver.tld /etc/nginx/sites-enabled/
 
 Check Nginx config:
 
