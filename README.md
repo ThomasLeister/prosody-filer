@@ -167,3 +167,12 @@ Prosody Filer has no immediate knowlegde over all the stored files and the time 
 This will delete uploads older than 28 days.  
 
 
+## Check if it works
+
+Get the log via
+
+    journalctl -f -u prosody-filer
+
+If your XMPP clients uploads or downloads any file, there should be some log messages on the screen.
+
+
