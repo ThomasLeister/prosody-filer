@@ -59,13 +59,39 @@ Copy
 to ```/home/prosody-filer/```. Rename the configuration to ```config.toml```.
 
 
+### Configure Prosody
+
+Make sure mod_http_upload is **dis**abled and mod_http_upload_external is **en**abled! Then configure the external upload module:
+
+```
+http_upload_external_base_url = "https://uploads.myserver.tld/upload/"
+http_upload_external_secret = "mysecret"
+http_upload_external_file_size_limit = 50000000 -- 50 MB
+```
+
+Restart Prosody when you are finished: 
+
+    systemctl restart prosody
+
 ### Configure Prosody Filer
 
 Prosody Filer configuration is done via the config.toml file in TOML syntax. There's not much to be configured:
 
-* listenport: TCP port on which Prosody Filter should listen on. 
-* secret: A random secret that matches the secret of http_upload_external in your Prosody configuration
-* uploadRootDir: The path where upload should be stored.
+```
+### IP address and port to listen to, e.g. "127.0.0.1:5050"
+listenport      = "127.0.0.1:5050"
+
+### Secret (must match the one in prosody.conf.lua!)
+secret          = "mysecret"
+
+### Where to store the uploaded files
+storeDir        = "./uploads/"
+
+### Subdirectory for HTTP upload / download requests (usually "upload/")
+uploadSubDir    = "upload/"
+```
+
+Make sure ```mysecret``` matches the secret defined in your mod_http_upload_external settings!
 
 
 ### Systemd service file
@@ -95,16 +121,10 @@ Reload the service definitions, enable the service and start it:
 Done! Prosody Filer is now listening on the specified port and waiting for requests.
 
 
-### Configure Prosody
-
-[make sure http_upload is disabled!]
-
-Configure prosody.cfg.lua
-
 
 ### Configure Nginx
 
-Create a new config file ```/etc/nginx/sites-available/upload.myserver.tld```:
+Create a new config file ```/etc/nginx/sites-available/uploads.myserver.tld```:
 
     server {
         listen 80;
@@ -126,7 +146,7 @@ Create a new config file ```/etc/nginx/sites-available/upload.myserver.tld```:
 
 Enable the new config:  
 
-    ln -s /etc/ngin/sites-available/upload.myserver.tld /etc/nginx/sites-enabled/
+    ln -s /etc/ngin/sites-available/uploads.myserver.tld /etc/nginx/sites-enabled/
 
 Check Nginx config:
 
@@ -142,7 +162,7 @@ Reload Nginx:
 
 Prosody Filer has no immediate knowlegde over all the stored files and the time they were uploaded, since no database exists for that. Also Prosody is not capable to do auto deletion if *mod_http_upload_external* is used. Therefore the suggested way of purging the uploads directory is to execute a purge command via a cron job:
 
-    @daily       find /var/lib/prosody/uploads -maxdepth 0 -type d -mtime +28 | xargs rm -rf
+    @daily    find /var/lib/prosody/uploads -maxdepth 0 -type d -mtime +28 | xargs rm -rf
 
 This will delete uploads older than 28 days.  
 

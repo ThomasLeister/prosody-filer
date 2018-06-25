@@ -8,9 +8,17 @@ import (
 	"testing"
 )
 
+func TestReadConfig(t *testing.T) {
+	// Set config
+	err := readConfig("config.toml", &conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestUploadValid(t *testing.T) {
 	// Set config
-	readConfig("config.toml")
+	readConfig("config.toml", &conf)
 
 	// Read catmetal file
 	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
@@ -42,7 +50,7 @@ func TestUploadValid(t *testing.T) {
 
 func TestUploadMissingMAC(t *testing.T) {
 	// Set config
-	readConfig("config.toml")
+	readConfig("config.toml", &conf)
 
 	// Read catmetal file
 	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
@@ -71,7 +79,7 @@ func TestUploadMissingMAC(t *testing.T) {
 
 func TestUploadInvalidMAC(t *testing.T) {
 	// Set config
-	readConfig("config.toml")
+	readConfig("config.toml", &conf)
 
 	// Read catmetal file
 	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
@@ -103,7 +111,7 @@ func TestUploadInvalidMAC(t *testing.T) {
 
 func TestUploadInvalidMethod(t *testing.T) {
 	// Set config
-	readConfig("config.toml")
+	readConfig("config.toml", &conf)
 
 	// Read catmetal file
 	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
@@ -127,5 +135,51 @@ func TestUploadInvalidMethod(t *testing.T) {
 	// Check status code
 	if status := rr.Code; status != http.StatusMethodNotAllowed {
 		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusMethodNotAllowed, rr.Body.String())
+	}
+}
+
+func TestDownloadHead(t *testing.T) {
+	// Set config
+	readConfig("config.toml", &conf)
+
+	// Create request
+	req, err := http.NewRequest("HEAD", "/upload/thomas/abc/catmetal.jpg", nil)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(handleRequest)
+
+	// Send request and record response
+	handler.ServeHTTP(rr, req)
+
+	// Check status code
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusOK, rr.Body.String())
+	}
+}
+
+func TestDownloadGet(t *testing.T) {
+	// Set config
+	readConfig("config.toml", &conf)
+
+	// Create request
+	req, err := http.NewRequest("GET", "/upload/thomas/abc/catmetal.jpg", nil)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(handleRequest)
+
+	// Send request and record response
+	handler.ServeHTTP(rr, req)
+
+	// Check status code
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusOK, rr.Body.String())
 	}
 }

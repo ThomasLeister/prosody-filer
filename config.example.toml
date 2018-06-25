@@ -2,11 +2,11 @@
 ### Server configuration
 ### (rename this file to "config.toml"!)
 
-### IP address and port to listen to. To listen on all IP addresses specify e.g. ":5050"
+### IP address and port to listen to, e.g. "127.0.0.1:5050"
 listenport      = "127.0.0.1:5050"
 
 ### Secret (must match the one in prosody.conf.lua!)
-secret          = "123"
+secret          = "mysecret"
 
 ### Where to store the uploaded files
 storeDir        = "./uploads/"

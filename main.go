@@ -123,7 +123,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func readConfig(configfilename string) error {
+func readConfig(configfilename string, conf *Config) error {
 	log.Println("Reading configuration ...")
 
 	configdata, err := ioutil.ReadFile(configfilename)
@@ -132,7 +132,7 @@ func readConfig(configfilename string) error {
 		return err
 	}
 
-	if _, err := toml.Decode(string(configdata), &conf); err != nil {
+	if _, err := toml.Decode(string(configdata), conf); err != nil {
 		log.Fatal("Config file config.toml is invalid:", err)
 		return err
 	}
@@ -153,7 +153,10 @@ func main() {
 	/*
 	 * Read config file
 	 */
-	readConfig(*argConfigFile)
+	err := readConfig(*argConfigFile, &conf)
+	if err != nil {
+		log.Println("There was an error while reading the configuration file:", err)
+	}
 
 	/*
 	 * Start HTTP server
