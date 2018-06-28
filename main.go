@@ -14,6 +14,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -70,13 +71,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		 * Check if the request is valid
 		 */
 		mac := hmac.New(sha256.New, []byte(conf.Secret))
-		log.Println("Secret:", conf.Secret)
 		log.Println("fileStorePath:", fileStorePath)
 		log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
 		mac.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10)))
 		macString := hex.EncodeToString(mac.Sum(nil))
-
-		log.Println("MAC wanted:", macString)
 
 		/*
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
@@ -113,9 +111,22 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "404 Not Found", 404)
 			return
 		}
+
+		/*
+		 * Find out the content type to sent correct header. There is a Go function for retrieving the
+		 * MIME content type, but this does not work with encrypted files (=> OMEMO). Therefore we're just
+		 * relying on file extensions.
+		 */
+		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
 		w.Header().Set("Content-Length", strconv.FormatInt(fileinfo.Size(), 10))
+		w.Header().Set("Content-Type", contentType)
 	} else if r.Method == "GET" {
+		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
 		http.ServeFile(w, r, conf.Storedir+fileStorePath)
+		w.Header().Set("Content-Type", contentType)
 	} else {
 		log.Println("Invalid method", r.Method, "for access to ", conf.UploadSubDir)
 		http.Error(w, "405 Method Not Allowed", 405)
