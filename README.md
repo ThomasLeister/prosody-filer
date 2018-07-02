@@ -4,7 +4,17 @@ A simple file server for handling XMPP http_upload requests. This server is meat
 
 **Why should I use this server?**
 
-* Prosody's integrated http_upload server seems to be memory leaking.
+* Prosody developers recommend using http_upload_external instead of http_upload (Matthew Wild on the question if http_upload is memory leaking):
+    > "BTW, I am not aware of any memory leaks in the HTTP upload code. However it is known to be very inefficient.
+    > That's why it has a very low upload limit, and we encourage people to use mod_http_upload_external instead.
+    > We set out to write a good XMPP server, not  HTTP server (of which many good ones already exist), so our HTTP server is optimised for small bits of data, like BOSH and websocket.
+    > Handling large uploads and downloads was not a goal (and implementing a great HTTP server is not a high priority for the project compared to other things).
+    > **Our HTTP code buffers the entire upload into memory.
+    > More, it does it in an inefficient way that can use up to 4x the actual size of the data (if the data is large).
+    > So uploading a 10MB file can in theory use 40MB RAM.**
+    > But it's not a leak, the RAM is later cleared and reused. [...]
+    > The GC will free the memory at some point, but the OS may still report that Prosody is using that memory due to the way the libc allocator works.
+    > Most long lived processes behave this way (only increasing RAM, rarely decreasing)."
 * This server works without any script interpreters or additional dependencies. It is delivered as a binary.
 * Go is very good at serving HTTP requests.
 
