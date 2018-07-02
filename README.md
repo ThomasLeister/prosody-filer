@@ -171,7 +171,7 @@ Reload Nginx:
 
 Prosody Filer has no immediate knowlegde over all the stored files and the time they were uploaded, since no database exists for that. Also Prosody is not capable to do auto deletion if *mod_http_upload_external* is used. Therefore the suggested way of purging the uploads directory is to execute a purge command via a cron job:
 
-    @daily    find /var/lib/prosody/uploads -maxdepth 0 -type d -mtime +28 | xargs rm -rf
+    @daily    find /home/prosody-filer/uploads -maxdepth 0 -type d -mtime +28 | xargs rm -rf
 
 This will delete uploads older than 28 days.  
 
