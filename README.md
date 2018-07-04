@@ -2,11 +2,13 @@
 
 A simple file server for handling XMPP http_upload requests. This server is meat to be used with the Prosody [mod_http_upload_external](https://modules.prosody.im/mod_http_upload_external.html) module.
 
-**Why should I use this server?**
+*(This module can also be used with future versions of Ejabberd: https://github.com/processone/ejabberd/commit/fface33d54f24c777dbec96fda6bd00e665327fe)*
+
+## Why should I use this server?
 
 * Prosody developers recommend using http_upload_external instead of http_upload (Matthew Wild on the question if http_upload is memory leaking):
     > "BTW, I am not aware of any memory leaks in the HTTP upload code. However it is known to be very inefficient.
-    > That's why it has a very low upload limit, and we encourage people to use mod_http_upload_external instead.
+    > That's why it has a very low upload limit, and **we encourage people to use mod_http_upload_external instead**.
     > We set out to write a good XMPP server, not  HTTP server (of which many good ones already exist), so our HTTP server is optimised for small bits of data, like BOSH and websocket.
     > Handling large uploads and downloads was not a goal (and implementing a great HTTP server is not a high priority for the project compared to other things).
     > **Our HTTP code buffers the entire upload into memory.
