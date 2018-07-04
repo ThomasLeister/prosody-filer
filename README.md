@@ -152,6 +152,7 @@ Create a new config file ```/etc/nginx/sites-available/uploads.myserver.tld```:
 
         location /upload/ {
                 proxy_pass http://127.0.0.1:5050/upload/;
+                proxy_request_buffering off;
         }
     }
 
