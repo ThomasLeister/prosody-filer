@@ -122,6 +122,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", contentType)
 	} else if r.Method == "GET" {
 		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
+		if fileStorePath == "" {
+			http.Error(w, "403 Forbidden", 403)
+			return
+		}
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
