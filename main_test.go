@@ -183,3 +183,26 @@ func TestDownloadGet(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusOK, rr.Body.String())
 	}
 }
+
+func TestEmptyGet(t *testing.T) {
+	// Set config
+	readConfig("config.toml", &conf)
+
+	// Create request
+	req, err := http.NewRequest("GET", "", nil)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(handleRequest)
+
+	// Send request and record response
+	handler.ServeHTTP(rr, req)
+
+	// Check status code
+	if status := rr.Code; status != http.StatusForbidden {
+		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusForbidden, rr.Body.String())
+	}
+}
