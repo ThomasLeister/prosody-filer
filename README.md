@@ -104,8 +104,9 @@ uploadSubDir    = "upload/"
 
 Make sure ```mysecret``` matches the secret defined in your mod_http_upload_external settings!
 
-In addition to that, the nginx user or group should be able to read the files in
-`/home/prosody-filer/upload/`.
+
+In addition to that, make sure that the nginx user or group can read the files uploaded
+via prosody-filer if you want to have them served by nginx directly.
 
 
 ### Systemd service file
@@ -121,7 +122,8 @@ Create a new Systemd service file: ```/etc/systemd/system/prosody-filer.service`
     Restart=always
     WorkingDirectory=/home/prosody-filer
     User=prosody-filer
-    Group=nginx
+    Group=prosody-filer
+    # Group=nginx  # if the files should get served by nginx directly:
 
     [Install]
     WantedBy=multi-user.target
@@ -151,23 +153,13 @@ Create a new config file ```/etc/nginx/sites-available/uploads.myserver.tld```:
         ssl_certificate /etc/letsencrypt/live/uploads.myserver.tld/fullchain.pem;
         ssl_certificate_key /etc/letsencrypt/live/uploads.myserver.tld/privkey.pem;
 
-        location /upload/ {
-            root /home/prosody-filer;
-            client_max_body_size 51m;
-            client_body_buffer_size 51m;
-            try_files $uri $uri/ @prosodyfiler;
-        }
+        client_max_body_size 50m;
 
-        location @prosodyfiler {
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-Host $host:$server_port;
-            proxy_set_header X-Forwarded-Server $host;
-            proxy_set_header X-Forwarded-For $remote_addr;
-            proxy_pass http://127.0.0.1:5050;
-            proxy_buffering off;
+        location /upload/ {
+                proxy_pass http://127.0.0.1:5050/upload/;
+                proxy_request_buffering off;
         }
+    }
 
 Enable the new config:
 
@@ -181,7 +173,36 @@ Reload Nginx:
 
     systemctl reload nginx
 
+#### Configuration for letting nginx serve the uploaded files
 
+```nginx
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name xmppserver.tld;
+
+    # ...
+
+    location /upload/ {
+        root /home/prosody-filer;
+        client_max_body_size 51m;
+        client_body_buffer_size 51m;
+        try_files $uri $uri/ @prosodyfiler;
+    }
+    location @prosodyfiler {
+        proxy_pass http://127.0.0.1:5050;
+        proxy_buffering off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host:$server_port;
+        proxy_set_header X-Forwarded-Server $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+    }
+
+    # ...
+}
+```
 
 ## Automatic purge
 
