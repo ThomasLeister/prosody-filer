@@ -1,6 +1,6 @@
 # Prosody Filer
 
-A simple file server for handling XMPP http_upload requests. This server is meat to be used with the Prosody [mod_http_upload_external](https://modules.prosody.im/mod_http_upload_external.html) module.
+A simple file server for handling XMPP http_upload requests. This server is meant to be used with the Prosody [mod_http_upload_external](https://modules.prosody.im/mod_http_upload_external.html) module.
 
 *(This module can also be used with future versions of Ejabberd: https://github.com/processone/ejabberd/commit/fface33d54f24c777dbec96fda6bd00e665327fe)*
 
