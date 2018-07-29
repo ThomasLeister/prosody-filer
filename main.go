@@ -83,7 +83,8 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			// Make sure the path exists
 			os.MkdirAll(filepath.Dir(conf.Storedir+fileStorePath), os.ModePerm)
 
-			file, err := os.Create(conf.Storedir + fileStorePath)
+			//file, err := os.Create(conf.Storedir + fileStorePath)
+			file, err := os.OpenFile(conf.Storedir+fileStorePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0755)
 			defer file.Close()
 			if err != nil {
 				log.Println("Creating new file failed:", err)
