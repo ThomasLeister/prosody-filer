@@ -83,7 +83,6 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			// Make sure the path exists
 			os.MkdirAll(filepath.Dir(conf.Storedir+fileStorePath), os.ModePerm)
 
-			//file, err := os.Create(conf.Storedir + fileStorePath)
 			file, err := os.OpenFile(conf.Storedir+fileStorePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0755)
 			defer file.Close()
 			if err != nil {
@@ -95,7 +94,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			n, err := io.Copy(file, r.Body)
 			if err != nil {
 				log.Println("Writing to new file failed:", err)
-				http.Error(w, "409 Conflict", 409)
+				http.Error(w, "500 Internal Server Error", 500)
 				return
 			}
 
