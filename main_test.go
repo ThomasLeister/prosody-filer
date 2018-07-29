@@ -1,5 +1,12 @@
 package main
 
+/*
+ * Manual testing with CURL
+ * Send with:
+ * curl -X PUT "http://localhost:5050/upload/thomas/abc/catmetal.jpg?v=e17531b1e88bc9a5cbf816eca8a82fc09969c9245250f3e1b2e473bb564e4be0" --data-binary '@catmetal.jpg'
+ * HMAC: e17531b1e88bc9a5cbf816eca8a82fc09969c9245250f3e1b2e473bb564e4be0
+ */
+
 import (
 	"bytes"
 	"io"
