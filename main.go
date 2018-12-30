@@ -55,7 +55,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		log.Println("Failed to parse URL query params:", err)
 	}
 
-	fileStorePath := strings.TrimLeft(u.Path, conf.UploadSubDir)
+	fileStorePath := strings.TrimPrefix(u.Path, "/" + conf.UploadSubDir)
 
 	if r.Method == "PUT" {
 		// Check if MAC is attached to URL
