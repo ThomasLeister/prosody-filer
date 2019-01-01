@@ -38,6 +38,18 @@ type Config struct {
 var conf Config
 
 /*
+ * Sets CORS headers
+ */
+func addCORSheaders(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, HEAD, GET, PUT")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Max-Age", "7200")
+}
+
+
+/*
  * Request handler
  * Is activated when a clients requests the file, file information or an upload
  */
@@ -56,6 +68,9 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fileStorePath := strings.TrimPrefix(u.Path, "/" + conf.UploadSubDir)
+
+	// Add CORS headers
+	addCORSheaders(w)
 
 	if r.Method == "PUT" {
 		// Check if MAC is attached to URL
