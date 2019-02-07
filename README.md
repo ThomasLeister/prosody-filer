@@ -204,6 +204,48 @@ server {
 }
 ```
 
+## apache2 configuration (alternative to Nginx)
+
+*(This configuration was provided by a user and has never been tested by the author of Prosody Filer)*
+
+```
+<VirtualHost *:80>
+    ServerName upload.example.eu
+    RedirectPermanent / https://upload.example.eu/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName upload.example.eu
+    SSLEngine on
+
+    SSLCertificateFile "Path to the ca file"
+    SSLCertificateKeyFile "Path to the key file"
+
+    Header always set Public-Key-Pins: ''
+    Header always set Strict-Transport-Security "max-age=63072000; includeSubdomains; preload"
+    H2Direct on
+
+    <Location /upload>
+        Header always set Access-Control-Allow-Origin "*"
+        Header always set Access-Control-Allow-Headers "Content-Type"
+        Header always set Access-Control-Allow-Methods "OPTIONS, PUT, GET"
+
+        RewriteEngine On
+
+        RewriteCond %{REQUEST_METHOD} OPTIONS
+        RewriteRule ^(.*)$ $1 [R=200,L]
+    </Location>
+
+    SSLProxyEngine on
+
+    ProxyPreserveHost On
+    ProxyRequests Off
+    ProxyPass / http://localhost:5050/
+    ProxyPassReverse / http://localhost:5050/
+</VirtualHost>
+```
+
+
 ## Automatic purge
 
 Prosody Filer has no immediate knowlegde over all the stored files and the time they were uploaded, since no database exists for that. Also Prosody is not capable to do auto deletion if *mod_http_upload_external* is used. Therefore the suggested way of purging the uploads directory is to execute a purge command via a cron job:
