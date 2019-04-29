@@ -2,7 +2,9 @@
 
 A simple file server for handling XMPP http_upload requests. This server is meant to be used with the Prosody [mod_http_upload_external](https://modules.prosody.im/mod_http_upload_external.html) module.
 
-*(This module can also be used with future versions of Ejabberd: https://github.com/processone/ejabberd/commit/fface33d54f24c777dbec96fda6bd00e665327fe)*
+**Despite the name, this server is also compatible with Ejabberd and Ejabberd's http_upload module!**
+
+---
 
 ## Why should I use this server?
 
@@ -18,7 +20,7 @@ A simple file server for handling XMPP http_upload requests. This server is mean
     > The GC will free the memory at some point, but the OS may still report that Prosody is using that memory due to the way the libc allocator works.
     > Most long lived processes behave this way (only increasing RAM, rarely decreasing)."
 * This server works without any script interpreters or additional dependencies. It is delivered as a binary.
-* Go is very good at serving HTTP requests.
+* Go is very good at serving HTTP requests and "made for this task".
 
 
 ## Download
@@ -34,19 +36,25 @@ To compile the server, you need a full Golang development environment. This can 
 
 Then checkout this repo:
 
-    go get github.com/ThomasLeister/prosody-filer
+```sh
+go get github.com/ThomasLeister/prosody-filer
+```
 
 and switch to the new directory:
 
-    cd $GOPATH/src/github.com/ThomasLeister/prosody-filer
+```sh
+cd $GOPATH/src/github.com/ThomasLeister/prosody-filer
+```
 
 The application can now be build:
 
-    ### Build static binary
-    ./build.sh
+```sh
+### Build static binary
+./build.sh
 
-    ### OR regular Go build
-    go build main.go
+### OR regular Go build
+go build main.go
+```
 
 
 ## Set up / configuration
@@ -56,11 +64,15 @@ The application can now be build:
 
 Create a new user for Prosody Filer to run as:
 
-    adduser --disabled-login --disabled-password prosody-filer
+```sh
+adduser --disabled-login --disabled-password prosody-filer
+```
 
 Switch to the new user:
 
-    su - prosody-filer
+```sh
+su - prosody-filer
+```
 
 Copy
 
@@ -74,7 +86,7 @@ to ```/home/prosody-filer/```. Rename the configuration to ```config.toml```.
 
 Back in your root shell make sure ```mod_http_upload``` is **dis**abled and ```mod_http_upload_external``` is **en**abled! Then configure the external upload module:
 
-```
+```lua
 http_upload_external_base_url = "https://uploads.myserver.tld/upload/"
 http_upload_external_secret = "mysecret"
 http_upload_external_file_size_limit = 50000000 -- 50 MB
@@ -84,11 +96,24 @@ Restart Prosody when you are finished:
 
     systemctl restart prosody
 
+
+### Alternative: Configure Ejabberd
+
+Although this tool is named after Prosody, it can be used with Ejabberd, too! Make sure you have a Ejabberd configuration similar to this:
+
+```yaml
+  mod_http_upload:
+    put_url: "https://uploads.@HOST@/upload"
+    external_secret: "mysecret"
+    max_size: 52428800
+```
+
+
 ### Configure Prosody Filer
 
 Prosody Filer configuration is done via the config.toml file in TOML syntax. There's not much to be configured:
 
-```
+```toml
 ### IP address and port to listen to, e.g. "127.0.0.1:5050"
 listenport      = "127.0.0.1:5050"
 
@@ -173,7 +198,8 @@ Reload Nginx:
 
     systemctl reload nginx
 
-#### Configuration for letting nginx serve the uploaded files
+
+#### Alternative configuration for letting Nginx serve the uploaded files
 
 ```nginx
 server {
