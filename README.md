@@ -167,24 +167,36 @@ Done! Prosody Filer is now listening on the specified port and waiting for reque
 
 Create a new config file ```/etc/nginx/sites-available/uploads.myserver.tld```:
 
-    server {
-        listen 80;
-        listen [::]:80;
-        listen 443 ssl;
-        listen [::]:443 ssl;
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    listen 443 ssl;
+    listen [::]:443 ssl;
 
-        server_name uploads.myserver.tld;
+    server_name uploads.myserver.tld;
 
-        ssl_certificate /etc/letsencrypt/live/uploads.myserver.tld/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/uploads.myserver.tld/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/uploads.myserver.tld/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/uploads.myserver.tld/privkey.pem;
 
-        client_max_body_size 50m;
+    client_max_body_size 50m;
 
-        location /upload/ {
-                proxy_pass http://127.0.0.1:5050/upload/;
-                proxy_request_buffering off;
+    location /upload/ {
+        if ( $request_method = OPTIONS ) {
+                add_header Access-Control-Allow-Origin '*';
+                add_header Access-Control-Allow-Methods 'PUT, GET, OPTIONS, HEAD';
+                add_header Access-Control-Allow-Headers 'Authorization, Content-Type';
+                add_header Access-Control-Allow-Credentials 'true';
+                add_header Content-Length 0;
+                add_header Content-Type text/plain;
+                return 200;
         }
+
+        proxy_pass http://127.0.0.1:5050/upload/;
+        proxy_request_buffering off;
     }
+}
+```
 
 Enable the new config:
 
@@ -201,15 +213,32 @@ Reload Nginx:
 
 #### Alternative configuration for letting Nginx serve the uploaded files
 
+*(not officially supported - user contribution!)*
+
 ```nginx
 server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name xmppserver.tld;
+    listen 80;
+    listen [::]:80;
+    listen 443 ssl;
+    listen [::]:443 ssl;
 
-    # ...
+    server_name uploads.myserver.tld;
+
+    ssl_certificate /etc/letsencrypt/live/uploads.myserver.tld/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/uploads.myserver.tld/privkey.pem;
 
     location /upload/ {
+        location /upload/ {
+        if ( $request_method = OPTIONS ) {
+                add_header Access-Control-Allow-Origin '*';
+                add_header Access-Control-Allow-Methods 'PUT, GET, OPTIONS, HEAD';
+                add_header Access-Control-Allow-Headers 'Authorization, Content-Type';
+                add_header Access-Control-Allow-Credentials 'true';
+                add_header Content-Length 0;
+                add_header Content-Type text/plain;
+                return 200;
+        }
+
         root /home/prosody-filer;
         client_max_body_size 51m;
         client_body_buffer_size 51m;
@@ -225,8 +254,6 @@ server {
         proxy_set_header X-Forwarded-Server $host;
         proxy_set_header X-Forwarded-For $remote_addr;
     }
-
-    # ...
 }
 ```
 
