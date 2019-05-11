@@ -228,7 +228,6 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/uploads.myserver.tld/privkey.pem;
 
     location /upload/ {
-        location /upload/ {
         if ( $request_method = OPTIONS ) {
                 add_header Access-Control-Allow-Origin '*';
                 add_header Access-Control-Allow-Methods 'PUT, GET, OPTIONS, HEAD';
@@ -259,7 +258,7 @@ server {
 
 ## apache2 configuration (alternative to Nginx)
 
-*(This configuration was provided by a user and has never been tested by the author of Prosody Filer)*
+*(This configuration was provided by a user and has never been tested by the author of Prosody Filer. It might be outdated and might not work anymore)*
 
 ```
 <VirtualHost *:80>
