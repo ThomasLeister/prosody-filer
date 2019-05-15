@@ -114,8 +114,8 @@ Although this tool is named after Prosody, it can be used with Ejabberd, too! Ma
 Prosody Filer configuration is done via the config.toml file in TOML syntax. There's not much to be configured:
 
 ```toml
-### IP address and port to listen to, e.g. "127.0.0.1:5050"
-listenport      = "127.0.0.1:5050"
+### IP address and port to listen to, e.g. "[::]:5050"
+listenport      = "[::1]:5050"
 
 ### Secret (must match the one in prosody.conf.lua!)
 secret          = "mysecret"
@@ -192,7 +192,7 @@ server {
                 return 200;
         }
 
-        proxy_pass http://127.0.0.1:5050/upload/;
+        proxy_pass http://[::]:5050/upload/;
         proxy_request_buffering off;
     }
 }
@@ -244,7 +244,7 @@ server {
         try_files $uri $uri/ @prosodyfiler;
     }
     location @prosodyfiler {
-        proxy_pass http://127.0.0.1:5050;
+        proxy_pass http://[::1]:5050;
         proxy_buffering off;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
