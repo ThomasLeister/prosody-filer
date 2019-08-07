@@ -81,6 +81,12 @@ Copy
 
 to ```/home/prosody-filer/```. Rename the configuration to ```config.toml```.
 
+Make sure the `prosody-filer` binary is executable: 
+
+```
+chmod u+x prosody-filer
+```
+
 
 ### Configure Prosody
 
