@@ -48,7 +48,6 @@ func addCORSheaders(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Max-Age", "7200")
 }
 
-
 /*
  * Request handler
  * Is activated when a clients requests the file, file information or an upload
@@ -67,7 +66,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		log.Println("Failed to parse URL query params:", err)
 	}
 
-	fileStorePath := strings.TrimPrefix(u.Path, "/" + conf.UploadSubDir)
+	fileStorePath := strings.TrimPrefix(u.Path, "/"+conf.UploadSubDir)
 
 	// Add CORS headers
 	addCORSheaders(w)
@@ -137,7 +136,8 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", contentType)
 	} else if r.Method == "GET" {
 		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
-		if fileStorePath == "" {
+		if f, err := os.Stat(conf.Storedir + fileStorePath); err != nil || f.IsDir() {
+			log.Println("Directory listing forbidden!")
 			http.Error(w, "403 Forbidden", 403)
 			return
 		}
