@@ -245,6 +245,7 @@ server {
         }
 
         root /home/prosody-filer;
+        autoindex off;
         client_max_body_size 51m;
         client_body_buffer_size 51m;
         try_files $uri $uri/ @prosodyfiler;
