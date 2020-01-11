@@ -113,6 +113,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			}
 
 			log.Println("Successfully written", n, "bytes to file", fileStorePath)
+			w.WriteHeader(http.StatusCreated)
 		} else {
 			log.Println("Invalid MAC.")
 			http.Error(w, "403 Forbidden", 403)
