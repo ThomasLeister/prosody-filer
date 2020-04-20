@@ -36,6 +36,7 @@ type Config struct {
 }
 
 var conf Config
+var versionString string = "0.0.0"
 
 /*
  * Sets CORS headers
@@ -192,7 +193,7 @@ func main() {
 	/*
 	 * Start HTTP server
 	 */
-	log.Println("Starting up XMPP HTTP upload server ...")
+	log.Println("Starting Prosody-Filer", versionString, "...")
 	http.HandleFunc("/"+conf.UploadSubDir, handleRequest)
 	log.Printf("Server started on port %s. Waiting for requests.\n", conf.Listenport)
 	http.ListenAndServe(conf.Listenport, nil)
