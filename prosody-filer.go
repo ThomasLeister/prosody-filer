@@ -37,13 +37,14 @@ type Config struct {
 
 var conf Config
 var versionString string = "0.0.0"
+const ALLOWED_METHODS string = "OPTIONS, HEAD, GET, PUT"
 
 /*
  * Sets CORS headers
  */
 func addCORSheaders(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, HEAD, GET, PUT")
+	w.Header().Set("Access-Control-Allow-Methods", ALLOWED_METHODS)
 	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Max-Age", "7200")
@@ -148,6 +149,9 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		http.ServeFile(w, r, conf.Storedir+fileStorePath)
 		w.Header().Set("Content-Type", contentType)
+	} else if r.Method == "OPTIONS" {
+		w.Header().Set("Allow", ALLOWED_METHODS)
+		return
 	} else {
 		log.Println("Invalid method", r.Method, "for access to ", conf.UploadSubDir)
 		http.Error(w, "405 Method Not Allowed", 405)
