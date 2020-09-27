@@ -15,14 +15,17 @@ import (
 	"io/ioutil"
 	"log"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
+	"github.com/coreos/go-systemd/activation"
 )
 
 /*
@@ -37,6 +40,7 @@ type Config struct {
 
 var conf Config
 var versionString string = "0.0.0"
+
 const ALLOWED_METHODS string = "OPTIONS, HEAD, GET, PUT"
 
 /*
@@ -199,6 +203,30 @@ func main() {
 	 */
 	log.Println("Starting Prosody-Filer", versionString, "...")
 	http.HandleFunc("/"+conf.UploadSubDir, handleRequest)
-	log.Printf("Server started on port %s. Waiting for requests.\n", conf.Listenport)
-	http.ListenAndServe(conf.Listenport, nil)
+
+	listeners, err := activation.Listeners()
+	if err == nil && len(listeners) >= 1 {
+		/*
+		 * Listen on systemd activated sockets
+		 */
+		if len(listeners) == 1 {
+			log.Printf("Socket activated by systemd. Waiting for requests.\n")
+		} else {
+			log.Printf("%d sockets activated by systemd. Waiting for requests.\n", len(listeners))
+		}
+		wg := new(sync.WaitGroup)
+		wg.Add(len(listeners))
+		for _, l := range listeners {
+			go func(listener net.Listener) {
+				log.Fatal(http.Serve(listener, nil))
+			}(l)
+		}
+		wg.Wait()
+	} else {
+		/*
+		 * Listen on port
+		 */
+		log.Printf("Server started on port %s. Waiting for requests.\n", conf.Listenport)
+		log.Fatal(http.ListenAndServe(conf.Listenport, nil))
+	}
 }

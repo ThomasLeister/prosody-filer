@@ -1,0 +1,15 @@
+[Unit]
+Description=Prosody file upload server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/prosody-filer
+Restart=on-failure
+WorkingDirectory=/var/lib/prosody-filer
+User=prosody-filer
+Group=prosody-filer
+# Group=nginx  # if the files should get served by nginx directly:
+
+[Install]
+WantedBy=multi-user.target

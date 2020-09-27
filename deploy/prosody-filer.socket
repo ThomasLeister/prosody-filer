@@ -1,0 +1,10 @@
+# see systemd.socket(5) for possible options
+[Socket]
+ListenStream=/var/run/prosody-filer.sock
+SocketMode=0660
+SocketUser=prosody-filer
+# if accessed by a reverse proxy, it has to be in this group
+SocketGroup=nginx
+
+[Install]
+WantedBy = sockets.target
