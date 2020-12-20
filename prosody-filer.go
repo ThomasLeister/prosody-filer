@@ -137,11 +137,15 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "403 Forbidden", 403)
 			return
 		}
-	} else if r.Method == "HEAD" {
+	} else if r.Method == "HEAD" || r.Method == "GET" {
 		fileinfo, err := os.Stat(absFilename)
 		if err != nil {
 			log.Println("Getting file information failed:", err)
 			http.Error(w, "404 Not Found", 404)
+			return
+		} else if fileinfo.IsDir() {
+			log.Println("Directory listing forbidden!")
+			http.Error(w, "403 Forbidden", 403)
 			return
 		}
 
@@ -151,20 +155,18 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		 * relying on file extensions.
 		 */
 		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
-		w.Header().Set("Content-Length", strconv.FormatInt(fileinfo.Size(), 10))
-		w.Header().Set("Content-Type", contentType)
-	} else if r.Method == "GET" {
-		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
-		if f, err := os.Stat(absFilename); err != nil || f.IsDir() {
-			log.Println("Directory listing forbidden!")
-			http.Error(w, "403 Forbidden", 403)
-			return
-		}
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
-		http.ServeFile(w, r, absFilename)
 		w.Header().Set("Content-Type", contentType)
+
+		if r.Method == "HEAD" {
+			w.Header().Set("Content-Length", strconv.FormatInt(fileinfo.Size(), 10))
+		} else {
+			http.ServeFile(w, r, absFilename)
+		}
+
+		return
 	} else if r.Method == "OPTIONS" {
 		w.Header().Set("Allow", ALLOWED_METHODS)
 		return
