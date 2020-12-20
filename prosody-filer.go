@@ -215,6 +215,7 @@ func main() {
 	 */
 	log.Println("Starting Prosody-Filer", versionString, "...")
 	subpath := path.Join("/", conf.UploadSubDir)
+	subpath += "/"
 	http.HandleFunc(subpath, handleRequest)
 	log.Printf("Server started on port %s. Waiting for requests.\n", conf.Listenport)
 	http.ListenAndServe(conf.Listenport, nil)
