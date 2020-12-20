@@ -3,8 +3,8 @@ package main
 /*
  * Manual testing with CURL
  * Send with:
- * curl -X PUT "http://localhost:5050/upload/thomas/abc/catmetal.jpg?v=e17531b1e88bc9a5cbf816eca8a82fc09969c9245250f3e1b2e473bb564e4be0" --data-binary '@catmetal.jpg'
- * HMAC: e17531b1e88bc9a5cbf816eca8a82fc09969c9245250f3e1b2e473bb564e4be0
+ * curl -X PUT "http://localhost:5050/upload/thomas/abc/catmetal.jpg?v=7b8879e2d1c733b423a70cde30cecc3a3c64a03f790d1b5bcbb2a6aca52b477e" --data-binary '@catmetal.jpg'
+ * HMAC: 7b8879e2d1c733b423a70cde30cecc3a3c64a03f790d1b5bcbb2a6aca52b477e
  */
 
 import (
@@ -71,7 +71,7 @@ func TestUploadValid(t *testing.T) {
 	// Create request
 	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
 	q := req.URL.Query()
-	q.Add("v", "e17531b1e88bc9a5cbf816eca8a82fc09969c9245250f3e1b2e473bb564e4be0")
+	q.Add("v", "7b8879e2d1c733b423a70cde30cecc3a3c64a03f790d1b5bcbb2a6aca52b477e")
 	req.URL.RawQuery = q.Encode()
 
 	if err != nil {
@@ -85,7 +85,7 @@ func TestUploadValid(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check status code
-	if status := rr.Code; status != http.StatusOK {
+	if status := rr.Code; status != http.StatusCreated {
 		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusOK, rr.Body.String())
 	}
 
