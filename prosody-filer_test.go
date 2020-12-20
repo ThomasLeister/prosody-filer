@@ -20,14 +20,14 @@ import (
 )
 
 func mockUpload() {
-	os.MkdirAll(filepath.Dir(conf.Storedir+"thomas/abc/"), os.ModePerm)
+	os.MkdirAll(filepath.Join(conf.Storedir,"thomas/abc/"), os.ModePerm)
 	from, err := os.Open("./catmetal.jpg")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer from.Close()
 
-	to, err := os.OpenFile(conf.Storedir+"thomas/abc/catmetal.jpg", os.O_RDWR|os.O_CREATE, 0660)
+	to, err := os.OpenFile(filepath.Join(conf.Storedir,"thomas/abc/catmetal.jpg"), os.O_RDWR|os.O_CREATE, 0660)
 	if err != nil {
 		log.Fatal(err)
 	}
