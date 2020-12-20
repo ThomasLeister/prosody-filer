@@ -114,7 +114,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			file, err := os.OpenFile(absFilename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0755)
+			file, err := os.OpenFile(absFilename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 			defer file.Close()
 			if err != nil {
 				log.Println("Creating new file failed:", err)
