@@ -86,7 +86,7 @@ func TestUploadValid(t *testing.T) {
 
 	// Check status code
 	if status := rr.Code; status != http.StatusCreated {
-		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusOK, rr.Body.String())
+		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusCreated, rr.Body.String())
 	}
 
 	// clean up
