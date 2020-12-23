@@ -219,6 +219,7 @@ func main() {
 		for _, l := range listeners {
 			go func(listener net.Listener) {
 				log.Fatal(http.Serve(listener, nil))
+				wg.Done()
 			}(l)
 		}
 		wg.Wait()
