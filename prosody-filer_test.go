@@ -189,6 +189,7 @@ func TestDownloadHead(t *testing.T) {
 
 	// Mock upload
 	mockUpload()
+	defer cleanup()
 
 	// Create request
 	req, err := http.NewRequest("HEAD", "/upload/thomas/abc/catmetal.jpg", nil)
@@ -207,9 +208,6 @@ func TestDownloadHead(t *testing.T) {
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusOK, rr.Body.String())
 	}
-
-	// cleanup
-	cleanup()
 }
 
 func TestDownloadGet(t *testing.T) {
@@ -218,6 +216,7 @@ func TestDownloadGet(t *testing.T) {
 
 	// moch upload
 	mockUpload()
+	defer cleanup()
 
 	// Create request
 	req, err := http.NewRequest("GET", "/upload/thomas/abc/catmetal.jpg", nil)
@@ -236,9 +235,6 @@ func TestDownloadGet(t *testing.T) {
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusOK, rr.Body.String())
 	}
-
-	// cleanup
-	cleanup()
 }
 
 func TestEmptyGet(t *testing.T) {
@@ -274,9 +270,11 @@ func TestDirListing(t *testing.T) {
 	// Set config
 	readConfig("config.toml", &conf)
 
+	mockUpload()
+	defer cleanup()
+
 	// Create request
 	req, err := http.NewRequest("GET", "/upload/thomas/", nil)
-
 	if err != nil {
 		t.Fatal(err)
 	}
