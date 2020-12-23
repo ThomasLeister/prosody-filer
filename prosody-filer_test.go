@@ -20,14 +20,14 @@ import (
 )
 
 func mockUpload() {
-	os.MkdirAll(filepath.Join(conf.Storedir,"thomas/abc/"), os.ModePerm)
+	os.MkdirAll(filepath.Join(conf.Storedir, "thomas/abc/"), os.ModePerm)
 	from, err := os.Open("./catmetal.jpg")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer from.Close()
 
-	to, err := os.OpenFile(filepath.Join(conf.Storedir,"thomas/abc/catmetal.jpg"), os.O_RDWR|os.O_CREATE, 0660)
+	to, err := os.OpenFile(filepath.Join(conf.Storedir, "thomas/abc/catmetal.jpg"), os.O_RDWR|os.O_CREATE, 0660)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -247,6 +247,35 @@ func TestEmptyGet(t *testing.T) {
 
 	// Create request
 	req, err := http.NewRequest("GET", "", nil)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(handleRequest)
+
+	// Send request and record response
+	handler.ServeHTTP(rr, req)
+
+	// Check status code
+	if status := rr.Code; status != http.StatusForbidden {
+		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusForbidden, rr.Body.String())
+	}
+}
+
+/*
+ * Check if access to subdirectory is forbidden.
+ * PASS if access is blocked with HTTP "Forbidden" response.
+ * FAIL if there is any other response or even a directory listing exposed.
+ * Introduced to check issue #14 (resolved in 7dff0209)
+ */
+func TestDirListing(t *testing.T) {
+	// Set config
+	readConfig("config.toml", &conf)
+
+	// Create request
+	req, err := http.NewRequest("GET", "/upload/thomas/", nil)
 
 	if err != nil {
 		t.Fatal(err)
