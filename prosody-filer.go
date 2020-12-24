@@ -38,6 +38,7 @@ type Config struct {
 
 var conf Config
 var versionString string = "0.0.0"
+
 const ALLOWED_METHODS string = "OPTIONS, HEAD, GET, PUT"
 
 /*
@@ -217,6 +218,7 @@ func main() {
 	 */
 	log.Println("Starting Prosody-Filer", versionString, "...")
 	subpath := path.Join("/", conf.UploadSubDir)
+	subpath = strings.TrimRight(subpath, "/")
 	subpath += "/"
 	http.HandleFunc(subpath, handleRequest)
 	log.Printf("Server started on port %s. Waiting for requests.\n", conf.Listenport)
