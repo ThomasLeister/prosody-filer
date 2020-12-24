@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -62,17 +63,26 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	log.Println("Incoming request:", r.Method, r.URL.String())
 
 	// Parse URL and args
-	u, err := url.Parse(r.URL.String())
-	if err != nil {
-		log.Println("Failed to parse URL:", err)
-	}
+	p := r.URL.Path
 
-	a, err := url.ParseQuery(u.RawQuery)
+	a, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		log.Println("Failed to parse URL query params:", err)
+		http.Error(w, "500 Internal Server Error", 500)
+		return
 	}
 
-	fileStorePath := strings.TrimPrefix(u.Path, "/"+conf.UploadSubDir)
+	subdir := path.Join("/", conf.UploadSubDir)
+	fileStorePath := strings.TrimPrefix(p, subdir)
+	if fileStorePath == "" || fileStorePath == "/" {
+		log.Println("Empty request URL")
+		http.Error(w, "403 Forbidden", 403)
+		return
+	} else if fileStorePath[0] == '/' {
+		fileStorePath = fileStorePath[1:]
+	}
+
+	absFilename := filepath.Join(conf.Storedir, fileStorePath)
 
 	// Add CORS headers
 	addCORSheaders(w)
@@ -101,9 +111,14 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		 */
 		if hmac.Equal([]byte(macString), []byte(a["v"][0])) {
 			// Make sure the path exists
-			os.MkdirAll(filepath.Dir(conf.Storedir+fileStorePath), os.ModePerm)
+			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
+			if err != nil {
+				log.Println("Could not make directories:", err)
+				http.Error(w, "500 Internal Server Error", 500)
+				return
+			}
 
-			file, err := os.OpenFile(conf.Storedir+fileStorePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0755)
+			file, err := os.OpenFile(absFilename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 			defer file.Close()
 			if err != nil {
 				log.Println("Creating new file failed:", err)
@@ -120,16 +135,21 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 			log.Println("Successfully written", n, "bytes to file", fileStorePath)
 			w.WriteHeader(http.StatusCreated)
+			return
 		} else {
 			log.Println("Invalid MAC.")
 			http.Error(w, "403 Forbidden", 403)
 			return
 		}
-	} else if r.Method == "HEAD" {
-		fileinfo, err := os.Stat(conf.Storedir + fileStorePath)
+	} else if r.Method == "HEAD" || r.Method == "GET" {
+		fileinfo, err := os.Stat(absFilename)
 		if err != nil {
 			log.Println("Getting file information failed:", err)
 			http.Error(w, "404 Not Found", 404)
+			return
+		} else if fileinfo.IsDir() {
+			log.Println("Directory listing forbidden!")
+			http.Error(w, "403 Forbidden", 403)
 			return
 		}
 
@@ -139,20 +159,18 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		 * relying on file extensions.
 		 */
 		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
-		w.Header().Set("Content-Length", strconv.FormatInt(fileinfo.Size(), 10))
-		w.Header().Set("Content-Type", contentType)
-	} else if r.Method == "GET" {
-		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
-		if f, err := os.Stat(conf.Storedir + fileStorePath); err != nil || f.IsDir() {
-			log.Println("Directory listing forbidden!")
-			http.Error(w, "403 Forbidden", 403)
-			return
-		}
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
-		http.ServeFile(w, r, conf.Storedir+fileStorePath)
 		w.Header().Set("Content-Type", contentType)
+
+		if r.Method == "HEAD" {
+			w.Header().Set("Content-Length", strconv.FormatInt(fileinfo.Size(), 10))
+		} else {
+			http.ServeFile(w, r, absFilename)
+		}
+
+		return
 	} else if r.Method == "OPTIONS" {
 		w.Header().Set("Allow", ALLOWED_METHODS)
 		return
@@ -202,7 +220,9 @@ func main() {
 	 * Start HTTP server
 	 */
 	log.Println("Starting Prosody-Filer", versionString, "...")
-	http.HandleFunc("/"+conf.UploadSubDir, handleRequest)
+	subpath := path.Join("/", conf.UploadSubDir)
+	subpath += "/"
+	http.HandleFunc(subpath, handleRequest)
 
 	listeners, err := activation.Listeners()
 	if err == nil && len(listeners) >= 1 {
