@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"log"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -31,6 +32,7 @@ import (
  */
 type Config struct {
 	Listenport   string
+	UnixSocket   bool
 	Secret       string
 	Storedir     string
 	UploadSubDir string
@@ -207,28 +209,47 @@ func readConfig(configfilename string, conf *Config) error {
  * Main function
  */
 func main() {
+	var configFile string
+	var proto string
+
 	/*
 	 * Read startup arguments
 	 */
-	var argConfigFile = flag.String("config", "./config.toml", "Path to configuration file \"config.toml\".")
+	flag.StringVar(&configFile, "config", "./config.toml", "Path to configuration file \"config.toml\".")
 	flag.Parse()
+
+	if !flag.Parsed() {
+		log.Fatalln("Could not parse flags")
+	}
+
 
 	/*
 	 * Read config file
 	 */
-	err := readConfig(*argConfigFile, &conf)
+	err := readConfig(configFile, &conf)
 	if err != nil {
-		log.Println("There was an error while reading the configuration file:", err)
+		log.Fatalln("There was an error while reading the configuration file:", err)
+	}
+
+	if conf.UnixSocket {
+		proto = "unix"
+	} else {
+		proto = "tcp"
 	}
 
 	/*
 	 * Start HTTP server
 	 */
 	log.Println("Starting Prosody-Filer", versionString, "...")
+	listener, err := net.Listen(proto, conf.Listenport)
+	if err != nil {
+		log.Fatalln("Could not open listening socket:", err)
+	}
+
 	subpath := path.Join("/", conf.UploadSubDir)
 	subpath = strings.TrimRight(subpath, "/")
 	subpath += "/"
 	http.HandleFunc(subpath, handleRequest)
 	log.Printf("Server started on port %s. Waiting for requests.\n", conf.Listenport)
-	http.ListenAndServe(conf.Listenport, nil)
+	http.Serve(listener, nil)
 }
