@@ -39,7 +39,15 @@ type Config struct {
 var conf Config
 var versionString string = "0.0.0"
 
-const ALLOWED_METHODS string = "OPTIONS, HEAD, GET, PUT"
+var ALLOWED_METHODS string = strings.Join(
+    []string{
+        http.MethodOptions,
+        http.MethodHead,
+        http.MethodGet,
+        http.MethodPut,
+    },
+    ", ",
+)
 
 /*
  * Sets CORS headers
@@ -84,7 +92,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	// Add CORS headers
 	addCORSheaders(w)
 
-	if r.Method == "PUT" {
+	if r.Method == http.MethodPut {
 		// Check if MAC is attached to URL
 		if a["v"] == nil {
 			log.Println("Error: No HMAC attached to URL.")
@@ -138,7 +146,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "403 Forbidden", 403)
 			return
 		}
-	} else if r.Method == "HEAD" || r.Method == "GET" {
+	} else if r.Method == http.MethodHead || r.Method == http.MethodGet {
 		fileinfo, err := os.Stat(absFilename)
 		if err != nil {
 			log.Println("Getting file information failed:", err)
@@ -161,14 +169,14 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", contentType)
 
-		if r.Method == "HEAD" {
+		if r.Method == http.MethodHead {
 			w.Header().Set("Content-Length", strconv.FormatInt(fileinfo.Size(), 10))
 		} else {
 			http.ServeFile(w, r, absFilename)
 		}
 
 		return
-	} else if r.Method == "OPTIONS" {
+	} else if r.Method == http.MethodOptions {
 		w.Header().Set("Allow", ALLOWED_METHODS)
 		return
 	} else {
