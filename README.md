@@ -140,6 +140,17 @@ In addition to that, make sure that the nginx user or group can read the files u
 via prosody-filer if you want to have them served by nginx directly.
 
 
+### Docker usage 
+
+To build container:
+
+```docker build . -t prosody-filer:latest```
+
+To run container use:
+
+```docker run -it --rm -v $PWD/config.example.toml:/config.toml prosody-filer -config /config.toml```
+
+
 ### Systemd service file
 
 Create a new Systemd service file: ```/etc/systemd/system/prosody-filer.service```
