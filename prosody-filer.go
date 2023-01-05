@@ -93,14 +93,22 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Add CORS headers
 	addCORSheaders(w)
-
+    
 	if r.Method == http.MethodPut {
 		// Check if MAC is attached to URL
-		if a["token"] == nil {
-			log.Println("Error: No HMAC attached to URL.")
+        // Default protocol_version
+        var protocol_version string
+		if a["token"] != nil {
+            protocol_version = "token"
+		} else if a["v"] != nil {
+            protocol_version = "v"
+        } else if a["v2"] != nil {
+            protocol_version = "v2"
+        } else {
+            log.Println("Error: No HMAC attached to URL. Expected URL with v, v2 or token")
 			http.Error(w, "409 Conflict", 409)
-			return
-		}
+            return
+        }
 
 		//fmt.Println("MAC sent: ", a["token"][0])
 
@@ -119,20 +127,20 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		log.Println("fileStorePath:", fileStorePath)
 		log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
         log.Println("fileType:", contentType)
-        
+        log.Println("Protocol version used:", protocol_version)
 		mac_v1.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10)))
 		mac_v1_String := hex.EncodeToString(mac_v1.Sum(nil))
         // use a 0-code byte between strings by prosody v2 specification
         mac_v2.Write([]byte(fileStorePath + "\x00" + strconv.FormatInt(r.ContentLength, 10) + "\x00" + contentType))
 		mac_v2_String := hex.EncodeToString(mac_v2.Sum(nil))
-        fmt.Println("MAC sent: ", a["token"][0])
+        fmt.Println("MAC sent: ", a[protocol_version][0])
         fmt.Println("MAC v1  : ", mac_v1_String)
         fmt.Println("MAC v2  : ", mac_v2_String)
         
         /*
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
 		 */
-		if hmac.Equal([]byte(mac_v1_String), []byte(a["token"][0])) {
+		if hmac.Equal([]byte(mac_v1_String), []byte(a[protocol_version][0])) {
 			// Make sure the path exists
 			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
 			if err != nil {
@@ -159,7 +167,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			log.Println("Successfully written", n, "bytes to file", fileStorePath)
 			w.WriteHeader(http.StatusCreated)
 			return
-		} else if hmac.Equal([]byte(mac_v2_String), []byte(a["token"][0])) {
+		} else if hmac.Equal([]byte(mac_v2_String), []byte(a[protocol_version][0])) {
 			// Make sure the path exists
 			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
 			if err != nil {
@@ -190,7 +198,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			log.Println("Invalid MAC:")
             log.Println([]byte(mac_v1_String))
             log.Println([]byte(mac_v2_String))
-            log.Println([]byte(a["token"][0]))
+            log.Println([]byte(a[protocol_version][0]))
 			http.Error(w, "403 Forbidden", 403)
 			return
 		}
@@ -211,7 +219,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		 * MIME content type, but this does not work with encrypted files (=> OMEMO). Therefore we're just
 		 * relying on file extensions.
 		 */
-		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
+        contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
