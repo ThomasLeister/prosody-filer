@@ -102,7 +102,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Println("MAC sent: ", a["v"][0])
+		fmt.Println("MAC sent: ", a["token"][0])
 
 		/*
 		 * Check if the request is valid
@@ -116,7 +116,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		/*
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
 		 */
-		if hmac.Equal([]byte(macString), []byte(a["v"][0])) {
+		if hmac.Equal([]byte(macString), []byte(a["token"][0])) {
 			// Make sure the path exists
 			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
 			if err != nil {
