@@ -96,7 +96,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPut {
 		// Check if MAC is attached to URL
-		if a["v"] == nil {
+		if a["token"] == nil {
 			log.Println("Error: No HMAC attached to URL.")
 			http.Error(w, "409 Conflict", 409)
 			return
