@@ -118,7 +118,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		mac.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10) + contentType))
 		macString := hex.EncodeToString(mac.Sum(nil))
         fmt.Println("MAC sent: ", a["token"][0])
-        fmt.Println("MAC gen : ", []byte(macString))
+        fmt.Println("MAC gen : ", macString)
         
         /*
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
@@ -152,7 +152,11 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			log.Println("Invalid MAC.")
-            //log.Println(macString, " is different than ", a["token"][0])
+            log.Println([]byte(macString), " is different than ", []byte(a["token"][0]))
+            log.Println([]byte(macString))
+            log.Println([]byte(a["token"][0]))
+
+
 			http.Error(w, "403 Forbidden", 403)
 			return
 		}
