@@ -107,13 +107,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		/*
 		 * Check if the request is valid
 		 */
+        contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
 		mac := hmac.New(sha256.New, []byte(conf.Secret))
 		log.Println("fileStorePath:", fileStorePath)
 		log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
-		mac.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10)))
+		mac.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10) + contentType))
 		macString := hex.EncodeToString(mac.Sum(nil))
-
-		/*
+        
+        /*
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
 		 */
 		if hmac.Equal([]byte(macString), []byte(a["token"][0])) {
