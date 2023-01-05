@@ -124,6 +124,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		mac_v1 := hmac.New(sha256.New, []byte(conf.Secret))
         mac_v2 := hmac.New(sha256.New, []byte(conf.Secret))
         
+        //log info + MAC key generation
 		log.Println("fileStorePath:", fileStorePath)
 		log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
         log.Println("fileType:", contentType)
@@ -134,8 +135,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         mac_v2.Write([]byte(fileStorePath + "\x00" + strconv.FormatInt(r.ContentLength, 10) + "\x00" + contentType))
 		mac_v2_String := hex.EncodeToString(mac_v2.Sum(nil))
         fmt.Println("MAC sent: ", a[protocol_version][0])
-        fmt.Println("MAC v1  : ", mac_v1_String)
-        fmt.Println("MAC v2  : ", mac_v2_String)
+        
+        //Debug logging
+        //fmt.Println("MAC v1  : ", mac_v1_String)
+        //fmt.Println("MAC v2  : ", mac_v2_String)
         
         /*
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
@@ -195,10 +198,11 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusCreated)
 			return
 		} else {
-			log.Println("Invalid MAC:")
-            log.Println([]byte(mac_v1_String))
-            log.Println([]byte(mac_v2_String))
-            log.Println([]byte(a[protocol_version][0]))
+			log.Println("Invalid MAC")
+            //Debug - log byte comparision
+            //log.Println([]byte(mac_v1_String))
+            //log.Println([]byte(mac_v2_String))
+            //log.Println([]byte(a[protocol_version][0]))
 			http.Error(w, "403 Forbidden", 403)
 			return
 		}
