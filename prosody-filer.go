@@ -122,7 +122,8 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         
 		mac_v1.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10)))
 		mac_v1_String := hex.EncodeToString(mac_v1.Sum(nil))
-        mac_v2.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10) + " " + contentType))
+        // use a 0-code byte between strings by prosody v2 specification
+        mac_v2.Write([]byte(fileStorePath + "\x00" + strconv.FormatInt(r.ContentLength, 10) + "\x00" + contentType))
 		mac_v2_String := hex.EncodeToString(mac_v2.Sum(nil))
         fmt.Println("MAC sent: ", a["token"][0])
         fmt.Println("MAC v1  : ", mac_v1_String)
