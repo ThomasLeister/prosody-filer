@@ -145,6 +145,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			log.Println("Invalid MAC.")
+            log.Println(macString, " is different than ", a["token"][0])
 			http.Error(w, "403 Forbidden", 403)
 			return
 		}
