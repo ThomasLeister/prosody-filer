@@ -114,6 +114,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		mac := hmac.New(sha256.New, []byte(conf.Secret))
 		log.Println("fileStorePath:", fileStorePath)
 		log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
+        log.Println("fileType:", contentType)
 		mac.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10) + contentType))
 		macString := hex.EncodeToString(mac.Sum(nil))
         
