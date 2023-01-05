@@ -107,23 +107,58 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		/*
 		 * Check if the request is valid
 		 */
+        
         contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
-		mac := hmac.New(sha256.New, []byte(conf.Secret))
+		
+		mac_v1 := hmac.New(sha256.New, []byte(conf.Secret))
+        mac_v2 := hmac.New(sha256.New, []byte(conf.Secret))
+        
 		log.Println("fileStorePath:", fileStorePath)
 		log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
         log.Println("fileType:", contentType)
-		mac.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10)))
-		macString := hex.EncodeToString(mac.Sum(nil))
+        
+		mac_v1.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10)))
+		mac_v1_String := hex.EncodeToString(mac_v1.Sum(nil))
+        mac_v2.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10) + contentType))
+		mac_v2_String := hex.EncodeToString(mac_v2.Sum(nil))
         fmt.Println("MAC sent: ", a["token"][0])
-        fmt.Println("MAC gen : ", macString)
+        fmt.Println("MAC v1  : ", mac_v1_String)
+        fmt.Println("MAC v2  : ", mac_v2_String)
         
         /*
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
 		 */
-		if hmac.Equal([]byte(macString), []byte(a["token"][0])) {
+		if hmac.Equal([]byte(mac_v1_String), []byte(a["token"][0])) {
+			// Make sure the path exists
+			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
+			if err != nil {
+				log.Println("Could not make directories:", err)
+				http.Error(w, "500 Internal Server Error", 500)
+				return
+			}
+
+			file, err := os.OpenFile(absFilename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+			defer file.Close()
+			if err != nil {
+				log.Println("Creating new file failed:", err)
+				http.Error(w, "409 Conflict", 409)
+				return
+			}
+
+			n, err := io.Copy(file, r.Body)
+			if err != nil {
+				log.Println("Writing to new file failed:", err)
+				http.Error(w, "500 Internal Server Error", 500)
+				return
+			}
+
+			log.Println("Successfully written", n, "bytes to file", fileStorePath)
+			w.WriteHeader(http.StatusCreated)
+			return
+		} else if hmac.Equal([]byte(mac_v2_String), []byte(a["token"][0])) {
 			// Make sure the path exists
 			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
 			if err != nil {
@@ -151,12 +186,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusCreated)
 			return
 		} else {
-			log.Println("Invalid MAC.")
-            log.Println([]byte(macString), " is different than ", []byte(a["token"][0]))
-            log.Println([]byte(macString))
+			log.Println("Invalid MAC:")
+            log.Println([]byte(mac_v1_String))
+            log.Println([]byte(mac_v2_String))
             log.Println([]byte(a["token"][0]))
-
-
 			http.Error(w, "403 Forbidden", 403)
 			return
 		}
