@@ -71,7 +71,7 @@ func TestUploadValid(t *testing.T) {
 	// Create request
 	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
 	q := req.URL.Query()
-	q.Add("token", "7b8879e2d1c733b423a70cde30cecc3a3c64a03f790d1b5bcbb2a6aca52b477e")
+	q.Add("v", "7b8879e2d1c733b423a70cde30cecc3a3c64a03f790d1b5bcbb2a6aca52b477e")
 	req.URL.RawQuery = q.Encode()
 
 	if err != nil {
@@ -135,7 +135,7 @@ func TestUploadInvalidMAC(t *testing.T) {
 	// Create request
 	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
 	q := req.URL.Query()
-	q.Add("token", "abc")
+	q.Add("v", "abc")
 	req.URL.RawQuery = q.Encode()
 
 	if err != nil {
