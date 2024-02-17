@@ -37,7 +37,7 @@ To compile the server, you need a full Golang development environment. This can 
 Then checkout this repo:
 
 ```sh
-go get github.com/ThomasLeister/prosody-filer
+go install github.com/ThomasLeister/prosody-filer
 ```
 
 and switch to the new directory:
