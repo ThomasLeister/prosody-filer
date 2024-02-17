@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"mime"
 	"net"
@@ -30,10 +29,10 @@ import (
  * Configuration of this server
  */
 type Config struct {
-	Listenport   string
+	ListenPort   string
 	UnixSocket   bool
 	Secret       string
-	Storedir     string
+	StoreDir     string
 	UploadSubDir string
 }
 
@@ -73,7 +72,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	a, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
-		http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -86,12 +85,16 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		fileStorePath = fileStorePath[1:]
 	}
 
-	absFilename := filepath.Join(conf.Storedir, fileStorePath)
+	absFilename := filepath.Join(conf.StoreDir, fileStorePath)
 
 	// Add CORS headers
 	addCORSheaders(w)
 
 	if r.Method == http.MethodPut {
+		/*
+		 * User client tries to upload file
+		 */
+
 		/*
 			Check if MAC is attached to URL and check protocol version.
 			Ejabberd: 	supports "v" and probably "v2"		Doc: https://docs.ejabberd.im/archive/20_12/modules/#mod-http-upload
@@ -159,12 +162,16 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if r.Method == http.MethodHead || r.Method == http.MethodGet {
-		fileinfo, err := os.Stat(absFilename)
+		/*
+		 * User client tries to download a file
+		 */
+
+		fileInfo, err := os.Stat(absFilename)
 		if err != nil {
 			log.Println("Getting file information failed:", err)
 			http.Error(w, "Not Found", http.StatusNotFound)
 			return
-		} else if fileinfo.IsDir() {
+		} else if fileInfo.IsDir() {
 			log.Println("Directory listing forbidden!")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
@@ -182,32 +189,34 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", contentType)
 
 		if r.Method == http.MethodHead {
-			w.Header().Set("Content-Length", strconv.FormatInt(fileinfo.Size(), 10))
+			w.Header().Set("Content-Length", strconv.FormatInt(fileInfo.Size(), 10))
 		} else {
 			http.ServeFile(w, r, absFilename)
 		}
 
 		return
 	} else if r.Method == http.MethodOptions {
+		// Client CORS request: Return allowed methods
 		w.Header().Set("Allow", ALLOWED_METHODS)
 		return
 	} else {
+		// Client is using a prohibited / unsupported method
 		log.Println("Invalid method", r.Method, "for access to ", conf.UploadSubDir)
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 }
 
-func readConfig(configfilename string, conf *Config) error {
+func readConfig(configFilename string, conf *Config) error {
 	log.Println("Reading configuration ...")
 
-	configdata, err := ioutil.ReadFile(configfilename)
+	configData, err := os.ReadFile(configFilename)
 	if err != nil {
 		log.Fatal("Configuration file config.toml cannot be read:", err, "...Exiting.")
 		return err
 	}
 
-	if _, err := toml.Decode(string(configdata), conf); err != nil {
+	if _, err := toml.Decode(string(configData), conf); err != nil {
 		log.Fatal("Config file config.toml is invalid:", err)
 		return err
 	}
@@ -249,8 +258,8 @@ func main() {
 	/*
 	 * Start HTTP server
 	 */
-	log.Println("Starting Prosody-Filer", versionString, "...")
-	listener, err := net.Listen(proto, conf.Listenport)
+	log.Println("Starting prosody-filer", versionString, "...")
+	listener, err := net.Listen(proto, conf.ListenPort)
 	if err != nil {
 		log.Fatalln("Could not open listening socket:", err)
 	}
@@ -259,6 +268,6 @@ func main() {
 	subpath = strings.TrimRight(subpath, "/")
 	subpath += "/"
 	http.HandleFunc(subpath, handleRequest)
-	log.Printf("Server started on port %s. Waiting for requests.\n", conf.Listenport)
+	log.Printf("Server started on port %s. Waiting for requests.\n", conf.ListenPort)
 	http.Serve(listener, nil)
 }
