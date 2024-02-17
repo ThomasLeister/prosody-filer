@@ -58,7 +58,7 @@ func TestReadConfig(t *testing.T) {
 	}
 }
 
-func TestUploadValid(t *testing.T) {
+func TestUploadValidV1(t *testing.T) {
 	// Set config
 	readConfig("config.toml", &conf)
 
@@ -72,6 +72,76 @@ func TestUploadValid(t *testing.T) {
 	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
 	q := req.URL.Query()
 	q.Add("v", "7b8879e2d1c733b423a70cde30cecc3a3c64a03f790d1b5bcbb2a6aca52b477e")
+	req.URL.RawQuery = q.Encode()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(handleRequest)
+
+	// Send request and record response
+	handler.ServeHTTP(rr, req)
+
+	// Check status code
+	if status := rr.Code; status != http.StatusCreated {
+		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusCreated, rr.Body.String())
+	}
+
+	// clean up
+	cleanup()
+}
+
+func TestUploadValidV2(t *testing.T) {
+	// Set config
+	readConfig("config.toml", &conf)
+
+	// Read catmetal file
+	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create request
+	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
+	q := req.URL.Query()
+	q.Add("v2", "7318cd44d4c40731e3b2ff869f553ab2326eae631868e7b8054db20d4aee1c06")
+	req.URL.RawQuery = q.Encode()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(handleRequest)
+
+	// Send request and record response
+	handler.ServeHTTP(rr, req)
+
+	// Check status code
+	if status := rr.Code; status != http.StatusCreated {
+		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusCreated, rr.Body.String())
+	}
+
+	// clean up
+	cleanup()
+}
+
+func TestUploadValidMetronomeToken(t *testing.T) {
+	// Set config
+	readConfig("config.toml", &conf)
+
+	// Read catmetal file
+	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create request
+	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
+	q := req.URL.Query()
+	q.Add("token", "7318cd44d4c40731e3b2ff869f553ab2326eae631868e7b8054db20d4aee1c06")
 	req.URL.RawQuery = q.Encode()
 
 	if err != nil {
