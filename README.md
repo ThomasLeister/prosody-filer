@@ -8,19 +8,7 @@ A simple file server for handling XMPP http_upload requests. This server is mean
 
 ## Why should I use this server?
 
-* Prosody developers recommend using http_upload_external instead of http_upload (Matthew Wild on the question if http_upload is memory leaking):
-    > "BTW, I am not aware of any memory leaks in the HTTP upload code. However it is known to be very inefficient.
-    > That's why it has a very low upload limit, and **we encourage people to use mod_http_upload_external instead**.
-    > We set out to write a good XMPP server, not  HTTP server (of which many good ones already exist), so our HTTP server is optimised for small bits of data, like BOSH and websocket.
-    > Handling large uploads and downloads was not a goal (and implementing a great HTTP server is not a high priority for the project compared to other things).
-    > **Our HTTP code buffers the entire upload into memory.
-    > More, it does it in an inefficient way that can use up to 4x the actual size of the data (if the data is large).
-    > So uploading a 10MB file can in theory use 40MB RAM.**
-    > But it's not a leak, the RAM is later cleared and reused. [...]
-    > The GC will free the memory at some point, but the OS may still report that Prosody is using that memory due to the way the libc allocator works.
-    > Most long lived processes behave this way (only increasing RAM, rarely decreasing)."
-* This server works without any script interpreters or additional dependencies. It is delivered as a binary.
-* Go is very good at serving HTTP requests and "made for this task".
+Originally this software was written to circumvent memory limitations / issues with the Prosody-internal http_upload implementation at the time. These limitations do not exist, anymore. Still this software can be used with Ejabberd and Prosody as an alternative to the internal http_upload servers. 
 
 
 ## Download
@@ -37,7 +25,7 @@ To compile the server, you need a full Golang development environment. This can 
 Then checkout this repo:
 
 ```sh
-go get github.com/ThomasLeister/prosody-filer
+go install github.com/ThomasLeister/prosody-filer
 ```
 
 and switch to the new directory:
@@ -138,6 +126,17 @@ Make sure ```mysecret``` matches the secret defined in your mod_http_upload_exte
 
 In addition to that, make sure that the nginx user or group can read the files uploaded
 via prosody-filer if you want to have them served by nginx directly.
+
+
+### Docker usage 
+
+To build container:
+
+```docker build . -t prosody-filer:latest```
+
+To run container use:
+
+```docker run -it --rm -v $PWD/config.example.toml:/config.toml prosody-filer -config /config.toml```
 
 
 ### Systemd service file
@@ -309,7 +308,7 @@ server {
 
 Prosody Filer has no immediate knowlegde over all the stored files and the time they were uploaded, since no database exists for that. Also Prosody is not capable to do auto deletion if *mod_http_upload_external* is used. Therefore the suggested way of purging the uploads directory is to execute a purge command via a cron job:
 
-    @daily    find /home/prosody-filer/upload/ -type d -mtime +28 | xargs rm -rf
+    @daily    find /home/prosody-filer/upload/ -mindepth 1 -type d -mtime +28 -print0 | xargs -0 -- rm -rf
 
 This will delete uploads older than 28 days.
 

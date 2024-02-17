@@ -15,9 +15,11 @@ import (
 	"io/ioutil"
 	"log"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -30,6 +32,7 @@ import (
  */
 type Config struct {
 	Listenport   string
+	UnixSocket   bool
 	Secret       string
 	Storedir     string
 	UploadSubDir string
@@ -38,12 +41,22 @@ type Config struct {
 var conf Config
 var versionString string = "0.0.0"
 
+var ALLOWED_METHODS string = strings.Join(
+    []string{
+        http.MethodOptions,
+        http.MethodHead,
+        http.MethodGet,
+        http.MethodPut,
+    },
+    ", ",
+)
+
 /*
  * Sets CORS headers
  */
 func addCORSheaders(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, HEAD, GET, PUT")
+	w.Header().Set("Access-Control-Allow-Methods", ALLOWED_METHODS)
 	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Max-Age", "7200")
@@ -57,22 +70,31 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	log.Println("Incoming request:", r.Method, r.URL.String())
 
 	// Parse URL and args
-	u, err := url.Parse(r.URL.String())
-	if err != nil {
-		log.Println("Failed to parse URL:", err)
-	}
+	p := r.URL.Path
 
-	a, err := url.ParseQuery(u.RawQuery)
+	a, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		log.Println("Failed to parse URL query params:", err)
+		http.Error(w, "500 Internal Server Error", 500)
+		return
 	}
 
-	fileStorePath := strings.TrimPrefix(u.Path, "/"+conf.UploadSubDir)
+	subdir := path.Join("/", conf.UploadSubDir)
+	fileStorePath := strings.TrimPrefix(p, subdir)
+	if fileStorePath == "" || fileStorePath == "/" {
+		log.Println("Empty request URL")
+		http.Error(w, "403 Forbidden", 403)
+		return
+	} else if fileStorePath[0] == '/' {
+		fileStorePath = fileStorePath[1:]
+	}
+
+	absFilename := filepath.Join(conf.Storedir, fileStorePath)
 
 	// Add CORS headers
 	addCORSheaders(w)
 
-	if r.Method == "PUT" {
+	if r.Method == http.MethodPut {
 		// Check if MAC is attached to URL
 		if a["v"] == nil {
 			log.Println("Error: No HMAC attached to URL.")
@@ -96,9 +118,14 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		 */
 		if hmac.Equal([]byte(macString), []byte(a["v"][0])) {
 			// Make sure the path exists
-			os.MkdirAll(filepath.Dir(conf.Storedir+fileStorePath), os.ModePerm)
+			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
+			if err != nil {
+				log.Println("Could not make directories:", err)
+				http.Error(w, "500 Internal Server Error", 500)
+				return
+			}
 
-			file, err := os.OpenFile(conf.Storedir+fileStorePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0755)
+			file, err := os.OpenFile(absFilename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 			defer file.Close()
 			if err != nil {
 				log.Println("Creating new file failed:", err)
@@ -115,16 +142,21 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 			log.Println("Successfully written", n, "bytes to file", fileStorePath)
 			w.WriteHeader(http.StatusCreated)
+			return
 		} else {
 			log.Println("Invalid MAC.")
 			http.Error(w, "403 Forbidden", 403)
 			return
 		}
-	} else if r.Method == "HEAD" {
-		fileinfo, err := os.Stat(conf.Storedir + fileStorePath)
+	} else if r.Method == http.MethodHead || r.Method == http.MethodGet {
+		fileinfo, err := os.Stat(absFilename)
 		if err != nil {
 			log.Println("Getting file information failed:", err)
 			http.Error(w, "404 Not Found", 404)
+			return
+		} else if fileinfo.IsDir() {
+			log.Println("Directory listing forbidden!")
+			http.Error(w, "403 Forbidden", 403)
 			return
 		}
 
@@ -134,20 +166,21 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		 * relying on file extensions.
 		 */
 		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
-		w.Header().Set("Content-Length", strconv.FormatInt(fileinfo.Size(), 10))
-		w.Header().Set("Content-Type", contentType)
-	} else if r.Method == "GET" {
-		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
-		if f, err := os.Stat(conf.Storedir + fileStorePath); err != nil || f.IsDir() {
-			log.Println("Directory listing forbidden!")
-			http.Error(w, "403 Forbidden", 403)
-			return
-		}
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
-		http.ServeFile(w, r, conf.Storedir+fileStorePath)
 		w.Header().Set("Content-Type", contentType)
+
+		if r.Method == http.MethodHead {
+			w.Header().Set("Content-Length", strconv.FormatInt(fileinfo.Size(), 10))
+		} else {
+			http.ServeFile(w, r, absFilename)
+		}
+
+		return
+	} else if r.Method == http.MethodOptions {
+		w.Header().Set("Allow", ALLOWED_METHODS)
+		return
 	} else {
 		log.Println("Invalid method", r.Method, "for access to ", conf.UploadSubDir)
 		http.Error(w, "405 Method Not Allowed", 405)
@@ -176,25 +209,47 @@ func readConfig(configfilename string, conf *Config) error {
  * Main function
  */
 func main() {
+	var configFile string
+	var proto string
+
 	/*
 	 * Read startup arguments
 	 */
-	var argConfigFile = flag.String("config", "./config.toml", "Path to configuration file \"config.toml\".")
+	flag.StringVar(&configFile, "config", "./config.toml", "Path to configuration file \"config.toml\".")
 	flag.Parse()
+
+	if !flag.Parsed() {
+		log.Fatalln("Could not parse flags")
+	}
+
 
 	/*
 	 * Read config file
 	 */
-	err := readConfig(*argConfigFile, &conf)
+	err := readConfig(configFile, &conf)
 	if err != nil {
-		log.Println("There was an error while reading the configuration file:", err)
+		log.Fatalln("There was an error while reading the configuration file:", err)
+	}
+
+	if conf.UnixSocket {
+		proto = "unix"
+	} else {
+		proto = "tcp"
 	}
 
 	/*
 	 * Start HTTP server
 	 */
 	log.Println("Starting Prosody-Filer", versionString, "...")
-	http.HandleFunc("/"+conf.UploadSubDir, handleRequest)
+	listener, err := net.Listen(proto, conf.Listenport)
+	if err != nil {
+		log.Fatalln("Could not open listening socket:", err)
+	}
+
+	subpath := path.Join("/", conf.UploadSubDir)
+	subpath = strings.TrimRight(subpath, "/")
+	subpath += "/"
+	http.HandleFunc(subpath, handleRequest)
 	log.Printf("Server started on port %s. Waiting for requests.\n", conf.Listenport)
-	http.ListenAndServe(conf.Listenport, nil)
+	http.Serve(listener, nil)
 }

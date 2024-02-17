@@ -3,8 +3,8 @@ package main
 /*
  * Manual testing with CURL
  * Send with:
- * curl -X PUT "http://localhost:5050/upload/thomas/abc/catmetal.jpg?v=e17531b1e88bc9a5cbf816eca8a82fc09969c9245250f3e1b2e473bb564e4be0" --data-binary '@catmetal.jpg'
- * HMAC: e17531b1e88bc9a5cbf816eca8a82fc09969c9245250f3e1b2e473bb564e4be0
+ * curl -X PUT "http://localhost:5050/upload/thomas/abc/catmetal.jpg?v=7b8879e2d1c733b423a70cde30cecc3a3c64a03f790d1b5bcbb2a6aca52b477e" --data-binary '@catmetal.jpg'
+ * HMAC: 7b8879e2d1c733b423a70cde30cecc3a3c64a03f790d1b5bcbb2a6aca52b477e
  */
 
 import (
@@ -20,14 +20,14 @@ import (
 )
 
 func mockUpload() {
-	os.MkdirAll(filepath.Dir(conf.Storedir+"thomas/abc/"), os.ModePerm)
+	os.MkdirAll(filepath.Join(conf.Storedir, "thomas/abc/"), os.ModePerm)
 	from, err := os.Open("./catmetal.jpg")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer from.Close()
 
-	to, err := os.OpenFile(conf.Storedir+"thomas/abc/catmetal.jpg", os.O_RDWR|os.O_CREATE, 0660)
+	to, err := os.OpenFile(filepath.Join(conf.Storedir, "thomas/abc/catmetal.jpg"), os.O_RDWR|os.O_CREATE, 0660)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestUploadValid(t *testing.T) {
 	// Create request
 	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
 	q := req.URL.Query()
-	q.Add("v", "e17531b1e88bc9a5cbf816eca8a82fc09969c9245250f3e1b2e473bb564e4be0")
+	q.Add("v", "7b8879e2d1c733b423a70cde30cecc3a3c64a03f790d1b5bcbb2a6aca52b477e")
 	req.URL.RawQuery = q.Encode()
 
 	if err != nil {
@@ -85,8 +85,8 @@ func TestUploadValid(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check status code
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusOK, rr.Body.String())
+	if status := rr.Code; status != http.StatusCreated {
+		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusCreated, rr.Body.String())
 	}
 
 	// clean up
@@ -189,6 +189,7 @@ func TestDownloadHead(t *testing.T) {
 
 	// Mock upload
 	mockUpload()
+	defer cleanup()
 
 	// Create request
 	req, err := http.NewRequest("HEAD", "/upload/thomas/abc/catmetal.jpg", nil)
@@ -207,9 +208,6 @@ func TestDownloadHead(t *testing.T) {
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusOK, rr.Body.String())
 	}
-
-	// cleanup
-	cleanup()
 }
 
 func TestDownloadGet(t *testing.T) {
@@ -218,6 +216,7 @@ func TestDownloadGet(t *testing.T) {
 
 	// moch upload
 	mockUpload()
+	defer cleanup()
 
 	// Create request
 	req, err := http.NewRequest("GET", "/upload/thomas/abc/catmetal.jpg", nil)
@@ -236,9 +235,6 @@ func TestDownloadGet(t *testing.T) {
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusOK, rr.Body.String())
 	}
-
-	// cleanup
-	cleanup()
 }
 
 func TestEmptyGet(t *testing.T) {
@@ -248,6 +244,37 @@ func TestEmptyGet(t *testing.T) {
 	// Create request
 	req, err := http.NewRequest("GET", "", nil)
 
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(handleRequest)
+
+	// Send request and record response
+	handler.ServeHTTP(rr, req)
+
+	// Check status code
+	if status := rr.Code; status != http.StatusForbidden {
+		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusForbidden, rr.Body.String())
+	}
+}
+
+/*
+ * Check if access to subdirectory is forbidden.
+ * PASS if access is blocked with HTTP "Forbidden" response.
+ * FAIL if there is any other response or even a directory listing exposed.
+ * Introduced to check issue #14 (resolved in 7dff0209)
+ */
+func TestDirListing(t *testing.T) {
+	// Set config
+	readConfig("config.toml", &conf)
+
+	mockUpload()
+	defer cleanup()
+
+	// Create request
+	req, err := http.NewRequest("GET", "/upload/thomas/", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
