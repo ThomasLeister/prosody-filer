@@ -39,10 +39,12 @@ func mockUpload() {
 	}
 }
 
+/*
+ * Remove all uploaded files after an upload test
+ */
 func cleanup() {
 	// Clean up
 	if _, err := os.Stat(conf.Storedir); err == nil {
-		// Delete existing catmetal picture
 		err := os.RemoveAll(conf.Storedir)
 		if err != nil {
 			log.Println("Error while cleaning up:", err)
@@ -50,6 +52,9 @@ func cleanup() {
 	}
 }
 
+/*
+ * Test if reading the config file works
+ */
 func TestReadConfig(t *testing.T) {
 	// Set config
 	err := readConfig("config.toml", &conf)
@@ -58,7 +63,13 @@ func TestReadConfig(t *testing.T) {
 	}
 }
 
+/*
+ * Run an upload test using the v1 / v MAC parameter
+ */
 func TestUploadValidV1(t *testing.T) {
+	// Remove uploaded file after test
+	defer cleanup()
+
 	// Set config
 	readConfig("config.toml", &conf)
 
@@ -88,12 +99,15 @@ func TestUploadValidV1(t *testing.T) {
 	if status := rr.Code; status != http.StatusCreated {
 		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusCreated, rr.Body.String())
 	}
-
-	// clean up
-	cleanup()
 }
 
+/*
+ * Run an upload test using the v2 MAC parameter
+ */
 func TestUploadValidV2(t *testing.T) {
+	// Remove uploaded file after test
+	defer cleanup()
+
 	// Set config
 	readConfig("config.toml", &conf)
 
@@ -123,12 +137,15 @@ func TestUploadValidV2(t *testing.T) {
 	if status := rr.Code; status != http.StatusCreated {
 		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusCreated, rr.Body.String())
 	}
-
-	// clean up
-	cleanup()
 }
 
+/*
+ * Run an upload test using the token MAC parameter
+ */
 func TestUploadValidMetronomeToken(t *testing.T) {
+	// Remove uploaded file after test
+	defer cleanup()
+
 	// Set config
 	readConfig("config.toml", &conf)
 
@@ -158,12 +175,15 @@ func TestUploadValidMetronomeToken(t *testing.T) {
 	if status := rr.Code; status != http.StatusCreated {
 		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusCreated, rr.Body.String())
 	}
-
-	// clean up
-	cleanup()
 }
 
+/*
+ * Run an upload test using no MAC parameter
+ */
 func TestUploadMissingMAC(t *testing.T) {
+	// Remove uploaded file after test
+	defer cleanup()
+
 	// Set config
 	readConfig("config.toml", &conf)
 
@@ -192,7 +212,13 @@ func TestUploadMissingMAC(t *testing.T) {
 	}
 }
 
+/*
+ * Run an upload test using an invalid MAC parameter
+ */
 func TestUploadInvalidMAC(t *testing.T) {
+	// Remove uploaded file after test
+	defer cleanup()
+
 	// Set config
 	readConfig("config.toml", &conf)
 
@@ -205,7 +231,7 @@ func TestUploadInvalidMAC(t *testing.T) {
 	// Create request
 	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
 	q := req.URL.Query()
-	q.Add("v", "abc")
+	q.Add("v", "thisisinvalid")
 	req.URL.RawQuery = q.Encode()
 
 	if err != nil {
@@ -224,7 +250,13 @@ func TestUploadInvalidMAC(t *testing.T) {
 	}
 }
 
+/*
+ * Test upload using an invalid HTTP method (POST)
+ */
 func TestUploadInvalidMethod(t *testing.T) {
+	// Remove uploaded file after test
+	defer cleanup()
+
 	// Set config
 	readConfig("config.toml", &conf)
 
@@ -253,6 +285,9 @@ func TestUploadInvalidMethod(t *testing.T) {
 	}
 }
 
+/*
+ * Test if HEAD requests work
+ */
 func TestDownloadHead(t *testing.T) {
 	// Set config
 	readConfig("config.toml", &conf)
@@ -280,6 +315,9 @@ func TestDownloadHead(t *testing.T) {
 	}
 }
 
+/*
+ * Test if GET download requests work
+ */
 func TestDownloadGet(t *testing.T) {
 	// Set config
 	readConfig("config.toml", &conf)
@@ -307,6 +345,9 @@ func TestDownloadGet(t *testing.T) {
 	}
 }
 
+/*
+ * Test if asking for an empty file name works
+ */
 func TestEmptyGet(t *testing.T) {
 	// Set config
 	readConfig("config.toml", &conf)
