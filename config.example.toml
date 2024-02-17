@@ -13,3 +13,6 @@ storeDir        = "./uploads/"
 
 ### Subdirectory for HTTP upload / download requests (usually "upload/")
 uploadSubDir    = "upload/"
+
+### Log level: "info", "warn" or "error"
+logLevel        = "warn"
