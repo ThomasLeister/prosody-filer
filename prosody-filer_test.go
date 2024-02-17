@@ -10,12 +10,13 @@ package main
 import (
 	"bytes"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 )
 
 func mockUpload() {
@@ -60,6 +61,8 @@ func TestReadConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	log.SetLevel(logrus.FatalLevel)
 }
 
 /*

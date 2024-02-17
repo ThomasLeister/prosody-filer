@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"log"
 	"mime"
 	"net"
 	"net/http"
@@ -23,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/sirupsen/logrus"
 )
 
 /*
@@ -34,10 +34,18 @@ type Config struct {
 	Secret       string
 	StoreDir     string
 	UploadSubDir string
+	LogLevel     string
 }
 
 var conf Config
 var versionString string = "0.0.0"
+
+var log = &logrus.Logger{
+	Out:       os.Stdout,
+	Formatter: new(logrus.TextFormatter),
+	Hooks:     make(logrus.LevelHooks),
+	Level:     logrus.DebugLevel,
+}
 
 var ALLOWED_METHODS string = strings.Join(
 	[]string{
@@ -65,13 +73,14 @@ func addCORSheaders(w http.ResponseWriter) {
  * Is activated when a clients requests the file, file information or an upload
  */
 func handleRequest(w http.ResponseWriter, r *http.Request) {
-	log.Println("Incoming request:", r.Method, r.URL.String())
+	log.Info("Incoming request: ", r.Method, r.URL.String())
 
 	// Parse URL and args
 	p := r.URL.Path
 
 	a, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
+		log.Warn("Failed to parse query")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -79,6 +88,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	subDir := path.Join("/", conf.UploadSubDir)
 	fileStorePath := strings.TrimPrefix(p, subDir)
 	if fileStorePath == "" || fileStorePath == "/" {
+		log.Warn("Access to / forbidden")
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	} else if fileStorePath[0] == '/' {
@@ -109,6 +119,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		} else if a["v"] != nil {
 			protocolVersion = "v"
 		} else {
+			log.Warn("No HMAC attached to URL. Expecting URL with \"v\", \"v2\" or \"token\" parameter as MAC")
 			http.Error(w, "No HMAC attached to URL. Expecting URL with \"v\", \"v2\" or \"token\" parameter as MAC", http.StatusForbidden)
 			return
 		}
@@ -116,12 +127,6 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		// Init HMAC
 		mac := hmac.New(sha256.New, []byte(conf.Secret))
 		macString := ""
-
-		//log info + MAC key generation
-		//log.Println("fileStorePath:", fileStorePath)
-		//log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
-		//log.Println("fileType:", contentType)
-		//log.Println("Protocol version used:", protocolVersion)
 
 		// Calculate MAC, depending on protocolVersion
 		if protocolVersion == "v" {
@@ -140,24 +145,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			macString = hex.EncodeToString(mac.Sum(nil))
 		}
 
-		//Debug logging
-		//fmt.Println("MAC v1 calculated : ", mac_v1_String)
-		//fmt.Println("MAC v2 calculated : ", mac_v2_String)
-
 		/*
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
 		 */
 		if hmac.Equal([]byte(macString), []byte(a[protocolVersion][0])) {
 			err = createFile(absFilename, fileStorePath, w, r)
 			if err != nil {
-				fmt.Print(err)
+				log.Error(err)
 			}
 			return
 		} else {
-			//Debug - log byte comparision
-			//log.Println([]byte(mac_v1_String))
-			//log.Println([]byte(mac_v2_String))
-			//log.Println([]byte(a[protocolVersion][0]))
+			log.Warning("Invalid MAC.")
 			http.Error(w, "Invalid MAC", http.StatusForbidden)
 			return
 		}
@@ -168,11 +166,11 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 		fileInfo, err := os.Stat(absFilename)
 		if err != nil {
-			log.Println("Getting file information failed:", err)
+			log.Error("Getting file information failed:", err)
 			http.Error(w, "Not Found", http.StatusNotFound)
 			return
 		} else if fileInfo.IsDir() {
-			log.Println("Directory listing forbidden!")
+			log.Warning("Directory listing forbidden!")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
@@ -201,15 +199,13 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		// Client is using a prohibited / unsupported method
-		log.Println("Invalid method", r.Method, "for access to ", conf.UploadSubDir)
+		log.Warn("Invalid method", r.Method, "for access to ", conf.UploadSubDir)
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 }
 
 func readConfig(configFilename string, conf *Config) error {
-	log.Println("Reading configuration ...")
-
 	configData, err := os.ReadFile(configFilename)
 	if err != nil {
 		log.Fatal("Configuration file config.toml cannot be read:", err, "...Exiting.")
@@ -222,6 +218,20 @@ func readConfig(configFilename string, conf *Config) error {
 	}
 
 	return nil
+}
+
+func setLogLevel() {
+	switch conf.LogLevel {
+	case "info":
+		log.SetLevel(logrus.InfoLevel)
+	case "warn":
+		log.SetLevel(logrus.WarnLevel)
+	case "error":
+		log.SetLevel(logrus.ErrorLevel)
+	default:
+		log.SetLevel(logrus.WarnLevel)
+		fmt.Print("Invalid log level set in config. Defaulting to \"warn\"")
+	}
 }
 
 /*
@@ -249,6 +259,7 @@ func main() {
 		log.Fatalln("There was an error while reading the configuration file:", err)
 	}
 
+	// Select proto
 	if conf.UnixSocket {
 		proto = "unix"
 	} else {
@@ -269,5 +280,10 @@ func main() {
 	subpath += "/"
 	http.HandleFunc(subpath, handleRequest)
 	log.Printf("Server started on port %s. Waiting for requests.\n", conf.ListenPort)
+
+	// Set log level
+	setLogLevel()
+
 	http.Serve(listener, nil)
+	// This line will only be reached when quitting
 }
