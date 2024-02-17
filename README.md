@@ -166,7 +166,44 @@ Reload the service definitions, enable the service and start it:
 
 Done! Prosody Filer is now listening on the specified port and waiting for requests.
 
+### FreeBSD service file
 
+- First, install go and build the static binary with `go install github.com/ThomasLeister/prosody-filer`.
+The binary should be in `~/go/bin/prosody-filer`. 
+- Create an user with `pw user add -n prosodyfiler -c 'Prosody Filer' -d /home/prosodyfiler -m -s /usr/sbin/nologin` 
+and copy the binary into `/home/prosodyfiler/`.
+- Put this rc script in `/etc/rc.d/prosody-filer`:
+```
+#!/bin/sh
+
+# PROVIDE: prosody_filer
+# REQUIRE: FILESYSTEMS networking
+# KEYWORDS: upload
+
+. /etc/rc.subr
+
+name="prosody_filer"
+program_name="prosody-filer"
+title="Prosody-Filer"
+rcvar=prosody_filer_enable
+prosody_filer_user="prosodyfiler"
+prosody_filer_group="prosodyfiler"
+prosody_filer_chdir="/home/prosodyfiler/"
+
+pidfile="/home/prosodyfiler/${program_name}.pid"
+required_files="/home/prosodyfiler/config.toml"
+exec_path="/home/prosodyfiler/${program_name}"
+output_file="/var/log/${program_name}.log"
+
+command="/usr/sbin/daemon"
+command_args="-r -t ${title} -o ${output_file} -P ${pidfile} -f ${exec_path}"
+
+load_rc_config $name
+```
+- Execute `sysrc prosody_filer_enable=YES`
+
+You can now start the service via `service prosody_filer start` and check
+it's log via `/var/log/prosody-filer.log`.
 
 ### Configure Nginx
 
