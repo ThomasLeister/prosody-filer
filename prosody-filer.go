@@ -95,8 +95,12 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	addCORSheaders(w)
 
 	if r.Method == http.MethodPut {
-		// Check if MAC is attached to URL
-		// Default protocol_version
+		/*
+			Check if MAC is attached to URL and check protocol version.
+			Ejabberd: 	supports "v" and probably "v2"		Doc: https://docs.ejabberd.im/archive/20_12/modules/#mod-http-upload
+			Prosody: 	supports "v" and "v2"				Doc: https://modules.prosody.im/mod_http_upload_external.html
+			Metronome: 	supports: "token" (meaning "v2")	Doc: https://archon.im/metronome-im/documentation/external-upload-protocol/)
+		*/
 		var protocol_version string
 		if a["token"] != nil {
 			protocol_version = "token"
@@ -129,8 +133,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
 		log.Println("fileType:", contentType)
 		log.Println("Protocol version used:", protocol_version)
+
 		mac_v1.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10)))
 		mac_v1_String := hex.EncodeToString(mac_v1.Sum(nil))
+
 		// use a 0-code byte between strings by prosody v2 specification
 		mac_v2.Write([]byte(fileStorePath + "\x00" + strconv.FormatInt(r.ContentLength, 10) + "\x00" + contentType))
 		mac_v2_String := hex.EncodeToString(mac_v2.Sum(nil))
