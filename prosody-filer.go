@@ -73,15 +73,13 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	a, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
-		log.Println("Failed to parse URL query params:", err)
 		http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	subdir := path.Join("/", conf.UploadSubDir)
-	fileStorePath := strings.TrimPrefix(p, subdir)
+	subDir := path.Join("/", conf.UploadSubDir)
+	fileStorePath := strings.TrimPrefix(p, subDir)
 	if fileStorePath == "" || fileStorePath == "/" {
-		log.Println("Empty request URL")
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	} else if fileStorePath[0] == '/' {
@@ -100,45 +98,44 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			Prosody: 	supports "v" and "v2"				Doc: https://modules.prosody.im/mod_http_upload_external.html
 			Metronome: 	supports: "token" (meaning "v2")	Doc: https://archon.im/metronome-im/documentation/external-upload-protocol/)
 		*/
-		var protocol_version string
-		if a["token"] != nil {
-			protocol_version = "token"
+		var protocolVersion string
+		if a["v2"] != nil {
+			protocolVersion = "v2"
+		} else if a["token"] != nil {
+			protocolVersion = "token"
 		} else if a["v"] != nil {
-			protocol_version = "v"
-		} else if a["v2"] != nil {
-			protocol_version = "v2"
+			protocolVersion = "v"
 		} else {
-			http.Error(w, "No HMAC attached to URL. Expected URL with \"v\", \"v2\" or \"token\" parameter", http.StatusForbidden)
+			http.Error(w, "No HMAC attached to URL. Expecting URL with \"v\", \"v2\" or \"token\" parameter as MAC", http.StatusForbidden)
 			return
 		}
 
-		//fmt.Println("MAC sent: ", a["token"][0])
-
-		/*
-		 * Check if the request is valid
-		 */
-
-		contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
-		if contentType == "" {
-			contentType = "application/octet-stream"
-		}
-
-		mac_v1 := hmac.New(sha256.New, []byte(conf.Secret))
-		mac_v2 := hmac.New(sha256.New, []byte(conf.Secret))
+		// Init HMAC
+		mac := hmac.New(sha256.New, []byte(conf.Secret))
+		macString := ""
 
 		//log info + MAC key generation
 		//log.Println("fileStorePath:", fileStorePath)
 		//log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
 		//log.Println("fileType:", contentType)
-		//log.Println("Protocol version used:", protocol_version)
+		//log.Println("Protocol version used:", protocolVersion)
 
-		mac_v1.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10)))
-		mac_v1_String := hex.EncodeToString(mac_v1.Sum(nil))
+		// Calculate MAC, depending on protocolVersion
+		if protocolVersion == "v" {
+			// use a space character (0x20) between components of MAC
+			mac.Write([]byte(fileStorePath + "\x20" + strconv.FormatInt(r.ContentLength, 10)))
+			macString = hex.EncodeToString(mac.Sum(nil))
+		} else if protocolVersion == "v2" || protocolVersion == "token" {
+			// Get content type (for v2 / token)
+			contentType := mime.TypeByExtension(filepath.Ext(fileStorePath))
+			if contentType == "" {
+				contentType = "application/octet-stream"
+			}
 
-		// use a 0-code byte between strings by prosody v2 specification
-		mac_v2.Write([]byte(fileStorePath + "\x00" + strconv.FormatInt(r.ContentLength, 10) + "\x00" + contentType))
-		mac_v2_String := hex.EncodeToString(mac_v2.Sum(nil))
-		fmt.Println("MAC received: ", a[protocol_version][0])
+			// use a null byte character (0x00) between components of MAC
+			mac.Write([]byte(fileStorePath + "\x00" + strconv.FormatInt(r.ContentLength, 10) + "\x00" + contentType))
+			macString = hex.EncodeToString(mac.Sum(nil))
+		}
 
 		//Debug logging
 		//fmt.Println("MAC v1 calculated : ", mac_v1_String)
@@ -147,17 +144,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		/*
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
 		 */
-		if hmac.Equal([]byte(mac_v1_String), []byte(a[protocol_version][0])) {
-			createFile(absFilename, fileStorePath, w, r)
-			return
-		} else if hmac.Equal([]byte(mac_v2_String), []byte(a[protocol_version][0])) {
-			createFile(absFilename, fileStorePath, w, r)
+		if hmac.Equal([]byte(macString), []byte(a[protocolVersion][0])) {
+			err = createFile(absFilename, fileStorePath, w, r)
+			if err != nil {
+				fmt.Print(err)
+			}
 			return
 		} else {
 			//Debug - log byte comparision
 			//log.Println([]byte(mac_v1_String))
 			//log.Println([]byte(mac_v2_String))
-			//log.Println([]byte(a[protocol_version][0]))
+			//log.Println([]byte(a[protocolVersion][0]))
 			http.Error(w, "Invalid MAC", http.StatusForbidden)
 			return
 		}
