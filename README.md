@@ -81,9 +81,10 @@ chmod u+x prosody-filer
 Back in your root shell make sure ```mod_http_upload``` is **dis**abled and ```mod_http_upload_external``` is **en**abled! Then configure the external upload module:
 
 ```lua
-http_upload_external_base_url = "https://uploads.myserver.tld/upload/"
-http_upload_external_secret = "mysecret"
-http_upload_external_file_size_limit = 50000000 -- 50 MB
+Component "uploads.myserver.tld" "http_upload_external"
+    http_upload_external_base_url = "https://uploads.myserver.tld/upload/"
+    http_upload_external_secret = "mysecret"
+    http_upload_external_file_size_limit = 50000000 -- 50 MB
 ```
 
 Restart Prosody when you are finished:
@@ -105,7 +106,7 @@ Although this tool is named after Prosody, it can be used with Ejabberd, too! Ma
 
 ### Configure Prosody Filer
 
-Prosody Filer configuration is done via the config.toml file in TOML syntax. There's not much to be configured:
+Prosody Filer configuration is done via the `config.toml` file in TOML syntax. There's not much to be configured. The most important piece is the `secret` setting, which **needs to match the secret defined in your mod_http_upload_external settings!**
 
 ```toml
 ### IP address and port to listen to, e.g. "[::]:5050"
@@ -120,8 +121,6 @@ storeDir        = "./upload/"
 ### Subdirectory for HTTP upload / download requests (usually "upload/")
 uploadSubDir    = "upload/"
 ```
-
-Make sure ```mysecret``` matches the secret defined in your mod_http_upload_external settings!
 
 
 In addition to that, make sure that the nginx user or group can read the files uploaded
