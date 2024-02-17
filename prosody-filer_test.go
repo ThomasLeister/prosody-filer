@@ -10,7 +10,6 @@ package main
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -20,14 +19,14 @@ import (
 )
 
 func mockUpload() {
-	os.MkdirAll(filepath.Join(conf.Storedir, "thomas/abc/"), os.ModePerm)
+	os.MkdirAll(filepath.Join(conf.StoreDir, "thomas/abc/"), os.ModePerm)
 	from, err := os.Open("./catmetal.jpg")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer from.Close()
 
-	to, err := os.OpenFile(filepath.Join(conf.Storedir, "thomas/abc/catmetal.jpg"), os.O_RDWR|os.O_CREATE, 0660)
+	to, err := os.OpenFile(filepath.Join(conf.StoreDir, "thomas/abc/catmetal.jpg"), os.O_RDWR|os.O_CREATE, 0660)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,8 +43,8 @@ func mockUpload() {
  */
 func cleanup() {
 	// Clean up
-	if _, err := os.Stat(conf.Storedir); err == nil {
-		err := os.RemoveAll(conf.Storedir)
+	if _, err := os.Stat(conf.StoreDir); err == nil {
+		err := os.RemoveAll(conf.StoreDir)
 		if err != nil {
 			log.Println("Error while cleaning up:", err)
 		}
@@ -74,13 +73,13 @@ func TestUploadValidV1(t *testing.T) {
 	readConfig("config.toml", &conf)
 
 	// Read catmetal file
-	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
+	catMetalFile, err := os.ReadFile("catmetal.jpg")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create request
-	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
+	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catMetalFile))
 	q := req.URL.Query()
 	q.Add("v", "7b8879e2d1c733b423a70cde30cecc3a3c64a03f790d1b5bcbb2a6aca52b477e")
 	req.URL.RawQuery = q.Encode()
@@ -112,13 +111,13 @@ func TestUploadValidV2(t *testing.T) {
 	readConfig("config.toml", &conf)
 
 	// Read catmetal file
-	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
+	catMetalFile, err := os.ReadFile("catmetal.jpg")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create request
-	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
+	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catMetalFile))
 	q := req.URL.Query()
 	q.Add("v2", "7318cd44d4c40731e3b2ff869f553ab2326eae631868e7b8054db20d4aee1c06")
 	req.URL.RawQuery = q.Encode()
@@ -150,13 +149,13 @@ func TestUploadValidMetronomeToken(t *testing.T) {
 	readConfig("config.toml", &conf)
 
 	// Read catmetal file
-	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
+	catMetalFile, err := os.ReadFile("catmetal.jpg")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create request
-	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
+	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catMetalFile))
 	q := req.URL.Query()
 	q.Add("token", "7318cd44d4c40731e3b2ff869f553ab2326eae631868e7b8054db20d4aee1c06")
 	req.URL.RawQuery = q.Encode()
@@ -188,13 +187,13 @@ func TestUploadMissingMAC(t *testing.T) {
 	readConfig("config.toml", &conf)
 
 	// Read catmetal file
-	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
+	catMetalFile, err := os.ReadFile("catmetal.jpg")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create request
-	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
+	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catMetalFile))
 
 	if err != nil {
 		t.Fatal(err)
@@ -223,13 +222,13 @@ func TestUploadInvalidMAC(t *testing.T) {
 	readConfig("config.toml", &conf)
 
 	// Read catmetal file
-	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
+	catMetalFile, err := os.ReadFile("catmetal.jpg")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create request
-	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
+	req, err := http.NewRequest("PUT", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catMetalFile))
 	q := req.URL.Query()
 	q.Add("v", "thisisinvalid")
 	req.URL.RawQuery = q.Encode()
@@ -261,13 +260,13 @@ func TestUploadInvalidMethod(t *testing.T) {
 	readConfig("config.toml", &conf)
 
 	// Read catmetal file
-	catmetalfile, err := ioutil.ReadFile("catmetal.jpg")
+	catMetalFile, err := os.ReadFile("catmetal.jpg")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create request
-	req, err := http.NewRequest("POST", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catmetalfile))
+	req, err := http.NewRequest("POST", "/upload/thomas/abc/catmetal.jpg", bytes.NewBuffer(catMetalFile))
 
 	if err != nil {
 		t.Fatal(err)
