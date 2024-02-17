@@ -207,8 +207,8 @@ func TestUploadMissingMAC(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check status code
-	if status := rr.Code; status != http.StatusConflict {
-		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusConflict, rr.Body.String())
+	if status := rr.Code; status != http.StatusForbidden {
+		t.Errorf("handler returned wrong status code: got %v want %v. HTTP body: %s", status, http.StatusForbidden, rr.Body.String())
 	}
 }
 
