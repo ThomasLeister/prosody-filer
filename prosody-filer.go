@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"mime"
@@ -149,56 +148,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
 		 */
 		if hmac.Equal([]byte(mac_v1_String), []byte(a[protocol_version][0])) {
-			// Make sure the path exists
-			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
-			if err != nil {
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-
-			file, err := os.OpenFile(absFilename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
-			defer file.Close()
-			if err != nil {
-				http.Error(w, "Could not create new file", http.StatusConflict)
-				return
-			}
-
-			n, err := io.Copy(file, r.Body)
-			if err != nil {
-				log.Println("Writing to new file failed:", err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-
-			log.Println("Successfully written", n, "bytes to file", fileStorePath)
-			w.WriteHeader(http.StatusCreated)
+			createFile(absFilename, fileStorePath, w, r)
 			return
 		} else if hmac.Equal([]byte(mac_v2_String), []byte(a[protocol_version][0])) {
-			// Make sure the path exists
-			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
-			if err != nil {
-				log.Println("Could not make directories:", err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-
-			file, err := os.OpenFile(absFilename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
-			defer file.Close()
-			if err != nil {
-				log.Println("Creating new file failed:", err)
-				http.Error(w, "Could not create new file", http.StatusConflict)
-				return
-			}
-
-			n, err := io.Copy(file, r.Body)
-			if err != nil {
-				log.Println("Writing to new file failed:", err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-
-			log.Println("Successfully written", n, "bytes to file", fileStorePath)
-			w.WriteHeader(http.StatusCreated)
+			createFile(absFilename, fileStorePath, w, r)
 			return
 		} else {
 			//Debug - log byte comparision
