@@ -75,7 +75,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	a, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		log.Println("Failed to parse URL query params:", err)
-		http.Error(w, "500 Internal Server Error", 500)
+		http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -83,7 +83,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	fileStorePath := strings.TrimPrefix(p, subdir)
 	if fileStorePath == "" || fileStorePath == "/" {
 		log.Println("Empty request URL")
-		http.Error(w, "403 Forbidden", 403)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	} else if fileStorePath[0] == '/' {
 		fileStorePath = fileStorePath[1:]
@@ -109,8 +109,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		} else if a["v2"] != nil {
 			protocol_version = "v2"
 		} else {
-			log.Println("Error: No HMAC attached to URL. Expected URL with v, v2 or token")
-			http.Error(w, "409 Conflict", 409)
+			http.Error(w, "No HMAC attached to URL. Expected URL with \"v\", \"v2\" or \"token\" parameter", http.StatusForbidden)
 			return
 		}
 
@@ -129,10 +128,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		mac_v2 := hmac.New(sha256.New, []byte(conf.Secret))
 
 		//log info + MAC key generation
-		log.Println("fileStorePath:", fileStorePath)
-		log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
-		log.Println("fileType:", contentType)
-		log.Println("Protocol version used:", protocol_version)
+		//log.Println("fileStorePath:", fileStorePath)
+		//log.Println("ContentLength:", strconv.FormatInt(r.ContentLength, 10))
+		//log.Println("fileType:", contentType)
+		//log.Println("Protocol version used:", protocol_version)
 
 		mac_v1.Write([]byte(fileStorePath + " " + strconv.FormatInt(r.ContentLength, 10)))
 		mac_v1_String := hex.EncodeToString(mac_v1.Sum(nil))
@@ -140,11 +139,11 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		// use a 0-code byte between strings by prosody v2 specification
 		mac_v2.Write([]byte(fileStorePath + "\x00" + strconv.FormatInt(r.ContentLength, 10) + "\x00" + contentType))
 		mac_v2_String := hex.EncodeToString(mac_v2.Sum(nil))
-		fmt.Println("MAC sent: ", a[protocol_version][0])
+		fmt.Println("MAC received: ", a[protocol_version][0])
 
 		//Debug logging
-		//fmt.Println("MAC v1  : ", mac_v1_String)
-		//fmt.Println("MAC v2  : ", mac_v2_String)
+		//fmt.Println("MAC v1 calculated : ", mac_v1_String)
+		//fmt.Println("MAC v2 calculated : ", mac_v2_String)
 
 		/*
 		 * Check whether calculated (expected) MAC is the MAC that client send in "v" URL parameter
@@ -153,23 +152,21 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			// Make sure the path exists
 			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
 			if err != nil {
-				log.Println("Could not make directories:", err)
-				http.Error(w, "500 Internal Server Error", 500)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
 
 			file, err := os.OpenFile(absFilename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 			defer file.Close()
 			if err != nil {
-				log.Println("Creating new file failed:", err)
-				http.Error(w, "409 Conflict", 409)
+				http.Error(w, "Could not create new file", http.StatusConflict)
 				return
 			}
 
 			n, err := io.Copy(file, r.Body)
 			if err != nil {
 				log.Println("Writing to new file failed:", err)
-				http.Error(w, "500 Internal Server Error", 500)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
 
@@ -181,7 +178,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			err := os.MkdirAll(filepath.Dir(absFilename), os.ModePerm)
 			if err != nil {
 				log.Println("Could not make directories:", err)
-				http.Error(w, "500 Internal Server Error", 500)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
 
@@ -189,14 +186,14 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			defer file.Close()
 			if err != nil {
 				log.Println("Creating new file failed:", err)
-				http.Error(w, "409 Conflict", 409)
+				http.Error(w, "Could not create new file", http.StatusConflict)
 				return
 			}
 
 			n, err := io.Copy(file, r.Body)
 			if err != nil {
 				log.Println("Writing to new file failed:", err)
-				http.Error(w, "500 Internal Server Error", 500)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
 
@@ -204,23 +201,22 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusCreated)
 			return
 		} else {
-			log.Println("Invalid MAC")
 			//Debug - log byte comparision
 			//log.Println([]byte(mac_v1_String))
 			//log.Println([]byte(mac_v2_String))
 			//log.Println([]byte(a[protocol_version][0]))
-			http.Error(w, "403 Forbidden", 403)
+			http.Error(w, "Invalid MAC", http.StatusForbidden)
 			return
 		}
 	} else if r.Method == http.MethodHead || r.Method == http.MethodGet {
 		fileinfo, err := os.Stat(absFilename)
 		if err != nil {
 			log.Println("Getting file information failed:", err)
-			http.Error(w, "404 Not Found", 404)
+			http.Error(w, "Not Found", http.StatusNotFound)
 			return
 		} else if fileinfo.IsDir() {
 			log.Println("Directory listing forbidden!")
-			http.Error(w, "403 Forbidden", 403)
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
@@ -247,7 +243,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		log.Println("Invalid method", r.Method, "for access to ", conf.UploadSubDir)
-		http.Error(w, "405 Method Not Allowed", 405)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 }
