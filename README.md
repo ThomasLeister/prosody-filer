@@ -41,7 +41,7 @@ The application can now be build:
 ./build.sh
 
 ### OR regular Go build
-go build main.go
+go build prosody-filer.go
 ```
 
 
