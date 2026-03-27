@@ -1,3 +1,11 @@
+# Prosody Filer project discontinued!
+
+This project has been discontinued in favor of Rusty Filer. See: https://codeberg.org/thomas.leister/rusty-filer
+
+Old README: 
+
+---
+
 # Prosody Filer
 
 A simple file server for handling XMPP http_upload requests. This server is meant to be used with the Prosody [mod_http_upload_external](https://modules.prosody.im/mod_http_upload_external.html) module.
